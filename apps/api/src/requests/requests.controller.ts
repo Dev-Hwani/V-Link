@@ -42,6 +42,12 @@ export class RequestsController {
     return this.requestsService.list(user);
   }
 
+  @Get(":id")
+  @Roles(Role.ADMIN, Role.REQUESTER, Role.VENDOR)
+  detail(@CurrentUser() user: AuthUser, @Param("id", ParseUUIDPipe) id: string) {
+    return this.requestsService.getById(user, id);
+  }
+
   @Patch(":id/approve")
   @Roles(Role.ADMIN)
   approve(

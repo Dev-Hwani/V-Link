@@ -1,0 +1,219 @@
+.page {
+  min-height: 100vh;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 10% 15%, #d9f7e8 0, transparent 45%),
+    radial-gradient(circle at 85% 10%, #d8ebff 0, transparent 38%),
+    #f6f8fb;
+  font-family: "Pretendard", "Noto Sans KR", "Segoe UI", sans-serif;
+  color: #1f2430;
+}
+
+.header {
+  margin-bottom: 20px;
+}
+
+.title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.subtitle {
+  margin-top: 8px;
+  color: #556070;
+}
+
+.card {
+  background: #fff;
+  border: 1px solid #d8dde6;
+  border-radius: 16px;
+  padding: 16px;
+  box-shadow: 0 8px 24px rgba(24, 38, 64, 0.05);
+}
+
+.loginForm {
+  display: grid;
+  gap: 10px;
+  max-width: 420px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 13px;
+  color: #556070;
+}
+
+.field input,
+.field textarea {
+  width: 100%;
+  border: 1px solid #c8cfdb;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  background: #fff;
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 72px;
+}
+
+.button {
+  appearance: none;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: #2b62d9;
+  cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.buttonAlt {
+  background: #0d7a5a;
+}
+
+.buttonGhost {
+  background: #6c7382;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 14px;
+}
+
+.list {
+  display: grid;
+  gap: 10px;
+}
+
+.item {
+  border: 1px solid #d6dce8;
+  border-radius: 12px;
+  padding: 12px;
+  cursor: pointer;
+  background: #fff;
+}
+
+.itemActive {
+  border-color: #2b62d9;
+  box-shadow: 0 0 0 2px rgba(43, 98, 217, 0.18);
+}
+
+.rowTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+
+.requestTitle {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.meta {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #5e6678;
+}
+
+.badge {
+  display: inline-block;
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.PENDING {
+  background: #eceff5;
+  color: #485164;
+}
+
+.APPROVED {
+  background: #dff0ff;
+  color: #1c5db0;
+}
+
+.IN_PROGRESS {
+  background: #fff1d6;
+  color: #8b5b00;
+}
+
+.COMPLETED {
+  background: #dff8ea;
+  color: #0f6d4c;
+}
+
+.REJECTED {
+  background: #fde4e4;
+  color: #9c3232;
+}
+
+.sectionTitle {
+  margin: 0 0 10px;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.detailRows {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.detailRow {
+  font-size: 14px;
+}
+
+.detailLabel {
+  color: #6c7382;
+  margin-right: 8px;
+}
+
+.timeline {
+  margin: 0;
+  padding-left: 18px;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+
+.notice {
+  margin-bottom: 10px;
+  font-size: 13px;
+  color: #7d3e00;
+  background: #fff2e2;
+  border: 1px solid #ffe0bf;
+  padding: 8px 10px;
+  border-radius: 10px;
+}
+
+@media (max-width: 960px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+

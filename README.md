@@ -14,13 +14,15 @@ Monorepo scaffold for V-Link VAS workflow.
 - VAS request workflow endpoints
   - `POST /requests`
   - `GET /requests`
+  - `GET /requests/:id`
   - `PATCH /requests/:id/approve`
   - `PATCH /requests/:id/reject`
   - `PATCH /requests/:id/start`
   - `PATCH /requests/:id/complete`
   - `POST /requests/:id/attachments`
 - Local file upload storage (`apps/api/uploads`)
-- SAP OData adapter abstraction with job logging
+- Assignment history model (`Assignment`)
+- SAP OData adapter + queue/retry worker + job logging
 
 ## Quick start
 
@@ -65,6 +67,18 @@ npm run dev:api
 ```bash
 npm run dev:web
 ```
+
+## Vendor screen
+
+- Open `http://localhost:3000/vendor` (or your Next.js dev port)
+- Login with seeded vendor account and process assigned work
+
+## SAP queue/retry env
+
+- `SAP_MAX_RETRY_ATTEMPTS` (default `3`)
+- `SAP_RETRY_BASE_SECONDS` (default `30`, exponential backoff)
+- `SAP_ALERT_CHANNEL` (default `log-only`)
+- `SAP_ALERT_WEBHOOK_URL` (optional HTTP webhook)
 
 ## Default seed users
 

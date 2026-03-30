@@ -42,6 +42,7 @@ model User {
   vendor            Vendor?         @relation(fields: [vendorId], references: [id])
   requestedRequests VasRequest[]    @relation("RequesterRequests")
   approvedRequests  VasRequest[]    @relation("ApproverRequests")
+  createdAssignments Assignment[]   @relation("AssignmentsByAdmin")
   statusEvents      StatusHistory[] @relation("StatusActor")
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
@@ -53,6 +54,7 @@ model Vendor {
   name             String       @unique
   users            User[]
   assignedRequests VasRequest[]
+  assignments      Assignment[]
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 }
@@ -74,6 +76,7 @@ model VasRequest {
   rejectedReason   String?
   completedAt      DateTime?
   attachments      Attachment[]
+  assignments      Assignment[]
   histories        StatusHistory[]
   sapJobs          SapJobLog[]
   createdAt        DateTime        @default(now())
@@ -96,6 +99,22 @@ model Attachment {
   createdAt    DateTime   @default(now())
 
   @@index([requestId])
+}
+
+model Assignment {
+  id           String     @id @default(uuid())
+  requestId    String
+  request      VasRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  vendorId     String
+  vendor       Vendor     @relation(fields: [vendorId], references: [id])
+  assignedById String?
+  assignedBy   User?      @relation("AssignmentsByAdmin", fields: [assignedById], references: [id])
+  note         String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([requestId])
+  @@index([vendorId])
 }
 
 model StatusHistory {
@@ -121,6 +140,11 @@ model SapJobLog {
   payload      Json
   response     Json?
   errorMessage String?
+  attemptCount Int          @default(0)
+  maxAttempts  Int          @default(3)
+  nextRetryAt  DateTime?    @default(now())
+  lastTriedAt  DateTime?
+  lockedAt     DateTime?
   runAt        DateTime?
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt

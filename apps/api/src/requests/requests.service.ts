@@ -77,11 +77,57 @@ export class RequestsService {
         },
         assignedVendor: true,
         attachments: true,
+        assignments: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            vendor: true,
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
       },
     });
+  }
+
+  async getById(user: AuthUser, requestId: string) {
+    const request = await this.prisma.vasRequest.findUnique({
+      where: { id: requestId },
+      include: {
+        requester: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+        assignedVendor: true,
+        attachments: true,
+        assignments: {
+          orderBy: { createdAt: "desc" },
+          include: {
+            vendor: true,
+          },
+        },
+        histories: {
+          orderBy: { createdAt: "asc" },
+        },
+      },
+    });
+
+    if (!request) {
+      throw new NotFoundException("Request not found");
+    }
+
+    if (user.role === Role.REQUESTER && request.requesterId !== user.sub) {
+      throw new ForbiddenException("You can only access your own requests");
+    }
+
+    if (user.role === Role.VENDOR && request.assignedVendorId !== user.vendorId) {
+      throw new ForbiddenException("You can only access your assigned requests");
+    }
+
+    return request;
   }
 
   async approve(user: AuthUser, requestId: string, dto: ApproveRequestDto) {
@@ -108,6 +154,12 @@ export class RequestsService {
         assignedVendorId: dto.vendorId,
         approvedById: user.sub,
         rejectedReason: null,
+        assignments: {
+          create: {
+            vendorId: dto.vendorId,
+            assignedById: user.sub,
+          },
+        },
         histories: {
           create: {
             fromStatus: request.status,
@@ -118,6 +170,9 @@ export class RequestsService {
       },
       include: {
         assignedVendor: true,
+        assignments: {
+          orderBy: { createdAt: "desc" },
+        },
       },
     });
 

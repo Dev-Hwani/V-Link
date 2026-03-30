@@ -4,6 +4,7 @@ import { ConfigService } from "@nestjs/config";
 import { firstValueFrom } from "rxjs";
 
 import { SapClient } from "./sap-client.interface";
+import { mapCompletionOrderPayload, mapPreStockOrderPayload } from "./sap.mapper";
 import { SapRequestPayload } from "./sap.types";
 
 @Injectable()
@@ -15,15 +16,15 @@ export class ODataSapClient implements SapClient {
 
   sendPreStockOrder(payload: SapRequestPayload): Promise<Record<string, unknown>> {
     const endpoint = this.configService.get<string>("SAP_ODATA_PRE_ORDER_PATH") ?? "/pre-order";
-    return this.post(endpoint, payload);
+    return this.post(endpoint, mapPreStockOrderPayload(payload));
   }
 
   sendCompletionOrder(payload: SapRequestPayload): Promise<Record<string, unknown>> {
     const endpoint = this.configService.get<string>("SAP_ODATA_POST_ORDER_PATH") ?? "/post-order";
-    return this.post(endpoint, payload);
+    return this.post(endpoint, mapCompletionOrderPayload(payload));
   }
 
-  private async post(endpoint: string, payload: SapRequestPayload): Promise<Record<string, unknown>> {
+  private async post(endpoint: string, payload: Record<string, unknown>): Promise<Record<string, unknown>> {
     const baseUrl = this.configService.get<string>("SAP_ODATA_BASE_URL");
 
     if (!baseUrl) {

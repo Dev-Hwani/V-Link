@@ -1,0 +1,60 @@
+1. [PRD] VAS 관리 프로그램 (V-Link)
+
+1.1. 제품 개요 (Product Overview)
+
+목적: 분산된 VAS(부가가치 서비스) 요청을 단일 채널로 통합하고, 업체 배정 및 스케줄링을 시각화하며, SAP와의 데이터 연동(재고/완료 오더)을 자동화하여 운영 효율을 극대화함.
+핵심 가치: 작업 가시성(Calendar View), 데이터 정확성(SAP Sync), 운영 편의성.
+타겟 사용자: 물류/운영 관리자, VAS 작업 업체, 내부 요청 부서.
+
+1.2. 사용자 흐름 (User Flow)
+
+요청자: 작업 신청서 작성 (파일 첨부) → 진행 상태 모니터링.
+관리자: 신청 건 검토 → 승인(업체 배정) 또는 반려(사유 입력) → 전체 캘린더 확인.
+업체: 배정된 작업 확인 → 작업 수행 → 완료 처리.
+시스템: 작업 전/후 SAP 오더 자동 전송 (실패 시 엑셀 수동 처리).
+
+1.3. 기능 요구사항 (Functional Requirements)
+
+모듈		|	기능			|	상세 설명
+인증		|	회원가입/로그인	|	관리자, 업체, 일반 요청자 권한별 차등 UI 제공
+신청		|	작업 요청서 작성	|	작업종류, 납기일, 팀, 상세내용 입력 및 파일 업로드
+승인/배정	|	워크플로우 관리	|	관리자가 신청 건 승인 시 업체 지정, 반려 시 사유 입력
+스케줄	|	캘린더 뷰		|	업체별/일자별 작업 현황 시각화 (Drag & Drop 지원 권장)
+SAP 연동	|	오더 전송		|	1. 재고 확보 오더 (작업 전)2. 완료 실적 오더 (작업 후)
+데이터백업	|	엑셀 내보내기	|	연동 실패 시 SAP 업로드용 양식(csv/xlsx) 생성
+
+1.4. 비기능 요구사항 (Non-Functional Requirements)
+
+신뢰성: SAP 연동 실패 시 관리자에게 즉시 알림 및 로그 기록.
+사용성: 모바일에서도 간편하게 승인 및 현황 확인이 가능하도록 반응형 웹 지원.
+보안: 업체 간 작업 내용 공유 금지 (자기 업체 데이터만 조회 가능).
+
+2. 권장 기술 스택 및 환경 (Tech Stack)
+관리자 중심의 사내 시스템이므로 생산성과 데이터 정합성에 초점을 맞춘 스택.
+
+2.1. Frontend (사용자 인터페이스)
+
+Framework: React.js 또는 Next.js (빠른 개발 및 SEO 불필요한 관리자 페이지에 적합)
+UI Library: Ant Design 또는 MUI (기업용 관리 도구에 최적화된 Grid, Calendar, Table 컴포넌트 제공)
+State Management: TanStack Query (React Query) (서버 데이터 동기화 및 캐싱에 탁월)
+
+2.2. Backend (서버 및 비즈니스 로직)
+
+Language/Framework: Node.js (NestJS) (확장성이 좋고 개발 속도가 빠름)
+Database: PostgreSQL (복잡한 관계형 데이터 처리에 안정적이며 오픈소스임)
+File Storage: AWS S3 (업로드된 작업 지시서 및 이미지 저장)
+ORM (Prisma): NestJS와 PostgreSQL을 쓰신다면 Prisma를 강력 추천
+Validation (Zod/Class-validator)
+
+2.3. Integration (SAP 연동 및 인프라)
+
+SAP 연동: SAP RFC 또는 OData API 연동 라이브러리 활용
+Excel 처리: ExcelJS (노드 환경에서 엑셀 파일 생성/파싱 최적화)
+Infrastructure: AWS 또는 Azure (기업 환경에 따른 클라우드 선택)
+
+3. 개발 로드맵 (Proposed Timeline)
+
+Phase 1 (MVP): 로그인, 요청서 작성, 관리자 승인/반려, 업체별 리스트 조회.
+Phase 2 (시각화): 풀 캘린더(FullCalendar) 연동 및 업체별 필터 기능 구현.
+Phase 3 (연동): SAP API 연동 모듈 및 엑셀 다운로드 기능 개발.
+Phase 4 (고도화): 알림톡/메일 알림 기능 및 대시보드 통계 기능 추가.

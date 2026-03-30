@@ -1,0 +1,130 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  REQUESTER
+  VENDOR
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum SapJobType {
+  PRE_STOCK
+  POST_COMPLETION
+}
+
+enum SapJobStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model User {
+  id                String          @id @default(uuid())
+  email             String          @unique
+  passwordHash      String
+  name              String
+  role              Role
+  vendorId          String?
+  vendor            Vendor?         @relation(fields: [vendorId], references: [id])
+  requestedRequests VasRequest[]    @relation("RequesterRequests")
+  approvedRequests  VasRequest[]    @relation("ApproverRequests")
+  statusEvents      StatusHistory[] @relation("StatusActor")
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+}
+
+model Vendor {
+  id               String       @id @default(uuid())
+  code             String       @unique
+  name             String       @unique
+  users            User[]
+  assignedRequests VasRequest[]
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+}
+
+model VasRequest {
+  id               String          @id @default(uuid())
+  requestType      String
+  title            String
+  dueDate          DateTime
+  team             String
+  description      String?
+  status           RequestStatus   @default(PENDING)
+  requesterId      String
+  requester        User            @relation("RequesterRequests", fields: [requesterId], references: [id])
+  assignedVendorId String?
+  assignedVendor   Vendor?         @relation(fields: [assignedVendorId], references: [id])
+  approvedById     String?
+  approvedBy       User?           @relation("ApproverRequests", fields: [approvedById], references: [id])
+  rejectedReason   String?
+  completedAt      DateTime?
+  attachments      Attachment[]
+  histories        StatusHistory[]
+  sapJobs          SapJobLog[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([status])
+  @@index([requesterId])
+  @@index([assignedVendorId])
+}
+
+model Attachment {
+  id           String     @id @default(uuid())
+  requestId    String
+  request      VasRequest @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  originalName String
+  storedName   String
+  mimeType     String
+  size         Int
+  path         String
+  createdAt    DateTime   @default(now())
+
+  @@index([requestId])
+}
+
+model StatusHistory {
+  id         String        @id @default(uuid())
+  requestId  String
+  request    VasRequest    @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  fromStatus RequestStatus?
+  toStatus   RequestStatus
+  reason     String?
+  actorId    String?
+  actor      User?         @relation("StatusActor", fields: [actorId], references: [id])
+  createdAt  DateTime      @default(now())
+
+  @@index([requestId])
+}
+
+model SapJobLog {
+  id           String       @id @default(uuid())
+  requestId    String
+  request      VasRequest   @relation(fields: [requestId], references: [id], onDelete: Cascade)
+  jobType      SapJobType
+  status       SapJobStatus @default(PENDING)
+  payload      Json
+  response     Json?
+  errorMessage String?
+  runAt        DateTime?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([requestId])
+  @@index([jobType, status])
+}

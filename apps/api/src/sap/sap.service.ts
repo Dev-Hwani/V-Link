@@ -1,10 +1,13 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Prisma, SapJobLog, SapJobStatus, SapJobType } from "@prisma/client";
+import ExcelJS from "exceljs";
 
+import { NotificationService } from "../notification/notification.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { SAP_CLIENT } from "./sap.constants";
 import { SapClient } from "./sap-client.interface";
+import { ExportSapBackupQueryDto, SapBackupFormat } from "./dto/export-sap-backup-query.dto";
 import { ListSapJobsQueryDto } from "./dto/list-sap-jobs-query.dto";
 import { SapIntegrationError } from "./sap.errors";
 import { SapRequestPayload } from "./sap.types";
@@ -13,6 +16,24 @@ const DEFAULT_MAX_ATTEMPTS = 3;
 const DEFAULT_RETRY_BASE_SECONDS = 30;
 const LOCK_EXPIRE_MS = 60 * 1000;
 
+interface SapBackupRow {
+  jobId: string;
+  requestId: string;
+  jobType: SapJobType;
+  jobStatus: SapJobStatus;
+  errorCode: string;
+  httpStatus: string;
+  errorMessage: string;
+  attempts: number;
+  requestType: string;
+  team: string;
+  vendorCode: string;
+  vendorName: string;
+  dueDate: string;
+  runAt: string;
+  payloadJson: string;
+}
+
 @Injectable()
 export class SapService {
   private readonly logger = new Logger(SapService.name);
@@ -20,6 +41,7 @@ export class SapService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly configService: ConfigService,
+    private readonly notificationService: NotificationService,
     @Inject(SAP_CLIENT) private readonly sapClient: SapClient,
   ) {}
 
@@ -82,6 +104,68 @@ export class SapService {
       orderBy: { createdAt: "desc" },
       take: 200,
     });
+  }
+
+  async exportBackup(query: ExportSapBackupQueryDto) {
+    const format = query.format ?? SapBackupFormat.CSV;
+    const where: Prisma.SapJobLogWhereInput = {};
+
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    if (query.jobType) {
+      where.jobType = query.jobType;
+    }
+
+    if (query.requestId) {
+      where.requestId = query.requestId;
+    }
+
+    if (query.from || query.to) {
+      where.createdAt = {};
+      if (query.from) {
+        where.createdAt.gte = new Date(query.from);
+      }
+      if (query.to) {
+        const end = new Date(query.to);
+        end.setHours(23, 59, 59, 999);
+        where.createdAt.lte = end;
+      }
+    }
+
+    const logs = await this.prisma.sapJobLog.findMany({
+      where,
+      include: {
+        request: {
+          include: {
+            assignedVendor: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      take: 5000,
+    });
+
+    const rows = logs.map((log) => this.toBackupRow(log));
+    const timestamp = new Date().toISOString().replaceAll(":", "").replaceAll("-", "").slice(0, 15);
+    const baseName = `sap-backup-${timestamp}`;
+
+    if (format === SapBackupFormat.XLSX) {
+      const content = await this.toXlsxBuffer(rows);
+      return {
+        fileName: `${baseName}.xlsx`,
+        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        content,
+      };
+    }
+
+    const content = Buffer.from(this.toCsv(rows), "utf-8");
+    return {
+      fileName: `${baseName}.csv`,
+      mimeType: "text/csv; charset=utf-8",
+      content,
+    };
   }
 
   private async enqueue(requestId: string, jobType: SapJobType) {
@@ -170,7 +254,7 @@ export class SapService {
       });
 
       if (exhausted) {
-        await this.sendFailureAlert(job, payload, normalized.message);
+        await this.sendFailureAlert(job, payload, normalized.message, normalized.errorCode, normalized.httpStatus);
       }
 
       return true;
@@ -203,9 +287,24 @@ export class SapService {
     };
   }
 
-  private async sendFailureAlert(job: SapJobLog, payload: SapRequestPayload, message: string) {
+  private async sendFailureAlert(
+    job: SapJobLog,
+    payload: SapRequestPayload,
+    message: string,
+    errorCode: string | null,
+    httpStatus: number | null,
+  ) {
     const alertChannel = this.configService.get<string>("SAP_ALERT_CHANNEL") ?? "log-only";
     this.logger.error(`SAP job failed (${job.jobType}) [channel=${alertChannel}]: ${message}`);
+
+    await this.notificationService.notifySapFailure({
+      requestId: job.requestId,
+      jobId: job.id,
+      jobType: job.jobType,
+      message,
+      errorCode,
+      httpStatus,
+    });
 
     const webhookUrl = this.configService.get<string>("SAP_ALERT_WEBHOOK_URL");
     if (!webhookUrl) {
@@ -280,5 +379,99 @@ export class SapService {
         lockedAt: null,
       },
     });
+  }
+
+  private toBackupRow(log: SapJobLog & { request: { requestType: string; team: string; dueDate: Date; assignedVendor: { code: string; name: string } | null } }) {
+    return {
+      jobId: log.id,
+      requestId: log.requestId,
+      jobType: log.jobType,
+      jobStatus: log.status,
+      errorCode: log.errorCode ?? "",
+      httpStatus: log.httpStatus !== null ? String(log.httpStatus) : "",
+      errorMessage: log.errorMessage ?? "",
+      attempts: log.attemptCount,
+      requestType: log.request.requestType,
+      team: log.request.team,
+      vendorCode: log.request.assignedVendor?.code ?? "",
+      vendorName: log.request.assignedVendor?.name ?? "",
+      dueDate: log.request.dueDate.toISOString(),
+      runAt: log.runAt ? log.runAt.toISOString() : "",
+      payloadJson: JSON.stringify(log.payload),
+    };
+  }
+
+  private toCsv(rows: SapBackupRow[]) {
+    const header = [
+      "jobId",
+      "requestId",
+      "jobType",
+      "jobStatus",
+      "errorCode",
+      "httpStatus",
+      "errorMessage",
+      "attempts",
+      "requestType",
+      "team",
+      "vendorCode",
+      "vendorName",
+      "dueDate",
+      "runAt",
+      "payloadJson",
+    ];
+
+    const body = rows.map((row) =>
+      [
+        row.jobId,
+        row.requestId,
+        row.jobType,
+        row.jobStatus,
+        row.errorCode,
+        row.httpStatus,
+        row.errorMessage,
+        String(row.attempts),
+        row.requestType,
+        row.team,
+        row.vendorCode,
+        row.vendorName,
+        row.dueDate,
+        row.runAt,
+        row.payloadJson,
+      ]
+        .map((value) => `"${String(value).replaceAll("\"", "\"\"")}"`)
+        .join(","),
+    );
+
+    return `${header.join(",")}\n${body.join("\n")}`;
+  }
+
+  private async toXlsxBuffer(rows: SapBackupRow[]) {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("sap-backup");
+
+    sheet.columns = [
+      { header: "jobId", key: "jobId", width: 38 },
+      { header: "requestId", key: "requestId", width: 38 },
+      { header: "jobType", key: "jobType", width: 20 },
+      { header: "jobStatus", key: "jobStatus", width: 16 },
+      { header: "errorCode", key: "errorCode", width: 20 },
+      { header: "httpStatus", key: "httpStatus", width: 12 },
+      { header: "errorMessage", key: "errorMessage", width: 40 },
+      { header: "attempts", key: "attempts", width: 10 },
+      { header: "requestType", key: "requestType", width: 20 },
+      { header: "team", key: "team", width: 20 },
+      { header: "vendorCode", key: "vendorCode", width: 20 },
+      { header: "vendorName", key: "vendorName", width: 24 },
+      { header: "dueDate", key: "dueDate", width: 28 },
+      { header: "runAt", key: "runAt", width: 28 },
+      { header: "payloadJson", key: "payloadJson", width: 80 },
+    ];
+
+    rows.forEach((row) => {
+      sheet.addRow(row);
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer as ArrayBuffer);
   }
 }

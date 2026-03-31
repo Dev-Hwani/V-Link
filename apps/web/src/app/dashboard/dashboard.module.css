@@ -1,0 +1,180 @@
+.page {
+  min-height: calc(100vh - 64px);
+  padding: 20px;
+  background:
+    radial-gradient(circle at 8% 12%, #e4f5ff 0, transparent 42%),
+    radial-gradient(circle at 90% 86%, #e7ffe9 0, transparent 32%),
+    #f6f8fc;
+  font-family: "Pretendard", "Noto Sans KR", "Segoe UI", sans-serif;
+  color: #1f2430;
+}
+
+.header {
+  margin-bottom: 14px;
+}
+
+.title {
+  margin: 0;
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.subtitle {
+  margin-top: 8px;
+  color: #586173;
+}
+
+.card {
+  border: 1px solid #d8dfea;
+  border-radius: 14px;
+  background: #fff;
+  padding: 14px;
+  box-shadow: 0 8px 20px rgba(24, 38, 64, 0.06);
+}
+
+.grid {
+  display: grid;
+  gap: 12px;
+}
+
+.rowTwo {
+  grid-template-columns: 1fr 1fr;
+}
+
+.rowThree {
+  grid-template-columns: repeat(3, minmax(180px, 1fr));
+}
+
+.statusCards {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+}
+
+.statusCard {
+  border: 1px solid #d6ddea;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.statusLabel {
+  margin: 0;
+  font-size: 12px;
+  color: #5a6374;
+}
+
+.statusValue {
+  margin: 6px 0 0;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.fieldRow {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(130px, 1fr));
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 12px;
+  color: #5a6374;
+}
+
+.field input {
+  border: 1px solid #c8cfdd;
+  border-radius: 10px;
+  padding: 9px 10px;
+  font-size: 14px;
+}
+
+.button {
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: #2b69dd;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.notice {
+  margin-bottom: 10px;
+  border: 1px solid #ffd9a5;
+  border-radius: 10px;
+  background: #fff2dc;
+  color: #7a4a00;
+  font-size: 13px;
+  padding: 8px 10px;
+}
+
+.barList {
+  display: grid;
+  gap: 8px;
+}
+
+.barRow {
+  display: grid;
+  grid-template-columns: 100px 1fr 48px;
+  gap: 8px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.barTrack {
+  height: 10px;
+  background: #ecf0f6;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  background: linear-gradient(90deg, #2d73dd, #5a8fe8);
+}
+
+.vendorList {
+  display: grid;
+  gap: 8px;
+}
+
+.vendorCard {
+  border: 1px solid #dbe1ed;
+  border-radius: 10px;
+  padding: 10px;
+  font-size: 13px;
+  display: grid;
+  gap: 4px;
+}
+
+.loginForm {
+  display: grid;
+  gap: 10px;
+  max-width: 420px;
+}
+
+@media (max-width: 960px) {
+  .rowTwo,
+  .rowThree {
+    grid-template-columns: 1fr;
+  }
+
+  .statusCards {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+
+  .barRow {
+    grid-template-columns: 76px 1fr 36px;
+  }
+}
+

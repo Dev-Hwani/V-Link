@@ -8,6 +8,7 @@ import {
 import { Prisma, RequestStatus, Role } from "@prisma/client";
 
 import { AuthUser } from "../common/interfaces/auth-user.interface";
+import { NotificationService } from "../notification/notification.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { SapService } from "../sap/sap.service";
 import { ApproveRequestDto } from "./dto/approve-request.dto";
@@ -20,6 +21,7 @@ export class RequestsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly sapService: SapService,
+    private readonly notificationService: NotificationService,
   ) {}
 
   async create(user: AuthUser, dto: CreateRequestDto) {
@@ -27,7 +29,7 @@ export class RequestsService {
       throw new ForbiddenException("Vendor users cannot create requests");
     }
 
-    return this.prisma.vasRequest.create({
+    const created = await this.prisma.vasRequest.create({
       data: {
         requestType: dto.requestType,
         title: dto.title,
@@ -49,6 +51,17 @@ export class RequestsService {
         },
       },
     });
+
+    void this.notificationService.notifyRequestLifecycle({
+      event: "REQUEST_CREATED",
+      requestId: created.id,
+      title: created.title,
+      status: created.status,
+      team: created.team,
+      dueDate: created.dueDate,
+    });
+
+    return created;
   }
 
   async list(user: AuthUser) {
@@ -178,6 +191,16 @@ export class RequestsService {
 
     await this.sapService.enqueuePreStockOrder(updated.id);
 
+    void this.notificationService.notifyRequestLifecycle({
+      event: "REQUEST_APPROVED",
+      requestId: updated.id,
+      title: updated.title,
+      status: updated.status,
+      team: updated.team,
+      dueDate: updated.dueDate,
+      vendorName: updated.assignedVendor?.name ?? null,
+    });
+
     return updated;
   }
 
@@ -192,7 +215,7 @@ export class RequestsService {
       throw new ConflictException("Only pending requests can be rejected");
     }
 
-    return this.prisma.vasRequest.update({
+    const updated = await this.prisma.vasRequest.update({
       where: { id: requestId },
       data: {
         status: RequestStatus.REJECTED,
@@ -208,6 +231,18 @@ export class RequestsService {
         },
       },
     });
+
+    void this.notificationService.notifyRequestLifecycle({
+      event: "REQUEST_REJECTED",
+      requestId: updated.id,
+      title: updated.title,
+      status: updated.status,
+      team: updated.team,
+      dueDate: updated.dueDate,
+      reason: updated.rejectedReason,
+    });
+
+    return updated;
   }
 
   async startWork(user: AuthUser, requestId: string) {
@@ -233,7 +268,7 @@ export class RequestsService {
       return request;
     }
 
-    return this.prisma.vasRequest.update({
+    const updated = await this.prisma.vasRequest.update({
       where: { id: requestId },
       data: {
         status: RequestStatus.IN_PROGRESS,
@@ -246,6 +281,17 @@ export class RequestsService {
         },
       },
     });
+
+    void this.notificationService.notifyRequestLifecycle({
+      event: "REQUEST_STARTED",
+      requestId: updated.id,
+      title: updated.title,
+      status: updated.status,
+      team: updated.team,
+      dueDate: updated.dueDate,
+    });
+
+    return updated;
   }
 
   async complete(user: AuthUser, requestId: string, dto: CompleteRequestDto) {
@@ -284,6 +330,16 @@ export class RequestsService {
     });
 
     await this.sapService.enqueueCompletionOrder(updated.id);
+
+    void this.notificationService.notifyRequestLifecycle({
+      event: "REQUEST_COMPLETED",
+      requestId: updated.id,
+      title: updated.title,
+      status: updated.status,
+      team: updated.team,
+      dueDate: updated.dueDate,
+      reason: dto.note ?? null,
+    });
 
     return updated;
   }

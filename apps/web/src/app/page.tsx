@@ -5,6 +5,9 @@ export default function HomePage() {
       <p>Frontend scaffold is ready.</p>
       <ul>
         <li>
+          <a href="/dashboard">Dashboard</a>
+        </li>
+        <li>
           <a href="/vendor">Vendor Work Console</a>
         </li>
         <li>

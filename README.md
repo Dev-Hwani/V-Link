@@ -26,9 +26,12 @@ Monorepo scaffold for V-Link VAS workflow.
 - SAP operational APIs (admin)
   - `GET /sap/jobs`
   - `POST /sap/jobs/:id/retry`
+  - `GET /sap/backup/export`
 - Calendar endpoints
   - `GET /calendar/events`
   - `GET /calendar/vendors`
+- Dashboard endpoint
+  - `GET /dashboard/summary`
 
 ## Quick start
 
@@ -84,6 +87,11 @@ npm run dev:web
 - Open `http://localhost:3000/calendar` (or your Next.js dev port)
 - Login and filter by date/vendor/status
 
+## Dashboard screen
+
+- Open `http://localhost:3000/dashboard` (or your Next.js dev port)
+- Login and inspect request/vendor/SAP metrics
+
 ## SAP queue/retry env
 
 - `SAP_MAX_RETRY_ATTEMPTS` (default `3`)
@@ -98,6 +106,12 @@ npm run dev:web
 - OAuth client credentials: `SAP_ODATA_TOKEN_URL`, `SAP_ODATA_CLIENT_ID`, `SAP_ODATA_CLIENT_SECRET`, `SAP_ODATA_SCOPE`
 - Mapping: `SAP_COMPANY_CODE`, `SAP_PLANT_CODE`, `SAP_STORAGE_LOCATION`, `SAP_CURRENCY`, `SAP_PRE_ORDER_TYPE`, `SAP_POST_ORDER_TYPE`, `SAP_REQUEST_TYPE_MAP_JSON`
 - Error policy override: `SAP_RETRYABLE_CODES`, `SAP_NON_RETRYABLE_CODES`
+
+## Notification env
+
+- Enable flags: `NOTIFY_EMAIL_ENABLED`, `NOTIFY_ALIMTALK_ENABLED`
+- Email: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `NOTIFY_EMAIL_TO`
+- AlimTalk webhook: `ALIMTALK_WEBHOOK_URL`, `ALIMTALK_API_KEY`
 
 ## Default seed users
 

@@ -1,6 +1,6 @@
 import "./globals.css";
 
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
@@ -8,10 +8,29 @@ export const metadata: Metadata = {
   description: "VAS workflow management",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body>
+        <div className="app-shell">
+          <header className="app-header">
+            <a className="app-brand" href="/">
+              V-Link
+            </a>
+            <nav className="app-nav">
+              <a href="/dashboard">Dashboard</a>
+              <a href="/calendar">Calendar</a>
+              <a href="/vendor">Vendor</a>
+            </nav>
+          </header>
+          <div className="app-content">{children}</div>
+        </div>
+      </body>
     </html>
   );
 }

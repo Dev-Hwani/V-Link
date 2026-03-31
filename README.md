@@ -23,6 +23,9 @@ Monorepo scaffold for V-Link VAS workflow.
 - Local file upload storage (`apps/api/uploads`)
 - Assignment history model (`Assignment`)
 - SAP OData adapter + queue/retry worker + job logging
+- SAP operational APIs (admin)
+  - `GET /sap/jobs`
+  - `POST /sap/jobs/:id/retry`
 - Calendar endpoints
   - `GET /calendar/events`
   - `GET /calendar/vendors`
@@ -87,6 +90,14 @@ npm run dev:web
 - `SAP_RETRY_BASE_SECONDS` (default `30`, exponential backoff)
 - `SAP_ALERT_CHANNEL` (default `log-only`)
 - `SAP_ALERT_WEBHOOK_URL` (optional HTTP webhook)
+
+## SAP operational env (phase 2 hardening)
+
+- Auth mode: `SAP_ODATA_AUTH_MODE` = `NONE | BASIC | BEARER | CLIENT_CREDENTIALS`
+- Bearer token: `SAP_ODATA_BEARER_TOKEN`
+- OAuth client credentials: `SAP_ODATA_TOKEN_URL`, `SAP_ODATA_CLIENT_ID`, `SAP_ODATA_CLIENT_SECRET`, `SAP_ODATA_SCOPE`
+- Mapping: `SAP_COMPANY_CODE`, `SAP_PLANT_CODE`, `SAP_STORAGE_LOCATION`, `SAP_CURRENCY`, `SAP_PRE_ORDER_TYPE`, `SAP_POST_ORDER_TYPE`, `SAP_REQUEST_TYPE_MAP_JSON`
+- Error policy override: `SAP_RETRYABLE_CODES`, `SAP_NON_RETRYABLE_CODES`
 
 ## Default seed users
 

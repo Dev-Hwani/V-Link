@@ -5,6 +5,8 @@ import { Prisma, SapJobLog, SapJobStatus, SapJobType } from "@prisma/client";
 import { PrismaService } from "../prisma/prisma.service";
 import { SAP_CLIENT } from "./sap.constants";
 import { SapClient } from "./sap-client.interface";
+import { ListSapJobsQueryDto } from "./dto/list-sap-jobs-query.dto";
+import { SapIntegrationError } from "./sap.errors";
 import { SapRequestPayload } from "./sap.types";
 
 const DEFAULT_MAX_ATTEMPTS = 3;
@@ -63,7 +65,22 @@ export class SapService {
         status: SapJobStatus.PENDING,
         nextRetryAt: new Date(),
         lockedAt: null,
+        errorMessage: null,
+        errorCode: null,
+        httpStatus: null,
       },
+    });
+  }
+
+  async listJobs(query: ListSapJobsQueryDto) {
+    return this.prisma.sapJobLog.findMany({
+      where: {
+        requestId: query.requestId,
+        jobType: query.jobType,
+        status: query.status,
+      },
+      orderBy: { createdAt: "desc" },
+      take: 200,
     });
   }
 
@@ -125,20 +142,25 @@ export class SapService {
           runAt: new Date(),
           nextRetryAt: null,
           lockedAt: null,
+          errorMessage: null,
+          errorCode: null,
+          httpStatus: null,
         },
       });
 
       return true;
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown SAP error";
-      const exhausted = attemptedCount >= job.maxAttempts;
+      const normalized = this.normalizeSapError(error);
+      const exhausted = attemptedCount >= job.maxAttempts || !normalized.retryable;
       const nextRetryAt = exhausted ? null : new Date(Date.now() + this.getRetryDelayMs(attemptedCount));
 
       await this.prisma.sapJobLog.update({
         where: { id: job.id },
         data: {
           status: SapJobStatus.FAILED,
-          errorMessage: message,
+          errorMessage: normalized.message,
+          errorCode: normalized.errorCode,
+          httpStatus: normalized.httpStatus,
           attemptCount: attemptedCount,
           lastTriedAt: new Date(),
           runAt: new Date(),
@@ -148,7 +170,7 @@ export class SapService {
       });
 
       if (exhausted) {
-        await this.sendFailureAlert(job, payload, message);
+        await this.sendFailureAlert(job, payload, normalized.message);
       }
 
       return true;
@@ -211,6 +233,33 @@ export class SapService {
     }
   }
 
+  private normalizeSapError(error: unknown) {
+    if (error instanceof SapIntegrationError) {
+      return {
+        message: error.message,
+        retryable: error.retryable,
+        errorCode: error.errorCode ?? null,
+        httpStatus: error.httpStatus ?? null,
+      };
+    }
+
+    if (error instanceof Error) {
+      return {
+        message: error.message,
+        retryable: true,
+        errorCode: null,
+        httpStatus: null,
+      };
+    }
+
+    return {
+      message: "Unknown SAP error",
+      retryable: true,
+      errorCode: null,
+      httpStatus: null,
+    };
+  }
+
   private getMaxAttempts() {
     const value = Number(this.configService.get<string>("SAP_MAX_RETRY_ATTEMPTS") ?? DEFAULT_MAX_ATTEMPTS);
     return Number.isFinite(value) && value > 0 ? Math.floor(value) : DEFAULT_MAX_ATTEMPTS;
@@ -233,4 +282,3 @@ export class SapService {
     });
   }
 }
-

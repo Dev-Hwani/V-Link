@@ -140,6 +140,8 @@ model SapJobLog {
   payload      Json
   response     Json?
   errorMessage String?
+  errorCode    String?
+  httpStatus   Int?
   attemptCount Int          @default(0)
   maxAttempts  Int          @default(3)
   nextRetryAt  DateTime?    @default(now())

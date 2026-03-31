@@ -23,6 +23,9 @@ Monorepo scaffold for V-Link VAS workflow.
 - Local file upload storage (`apps/api/uploads`)
 - Assignment history model (`Assignment`)
 - SAP OData adapter + queue/retry worker + job logging
+- Calendar endpoints
+  - `GET /calendar/events`
+  - `GET /calendar/vendors`
 
 ## Quick start
 
@@ -72,6 +75,11 @@ npm run dev:web
 
 - Open `http://localhost:3000/vendor` (or your Next.js dev port)
 - Login with seeded vendor account and process assigned work
+
+## Calendar screen
+
+- Open `http://localhost:3000/calendar` (or your Next.js dev port)
+- Login and filter by date/vendor/status
 
 ## SAP queue/retry env
 

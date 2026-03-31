@@ -7,6 +7,9 @@ export default function HomePage() {
         <li>
           <a href="/vendor">Vendor Work Console</a>
         </li>
+        <li>
+          <a href="/calendar">VAS Calendar</a>
+        </li>
       </ul>
     </main>
   );

@@ -3,14 +3,15 @@
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import styles from "./login.module.css";
+import styles from "./signup.module.css";
 import { API_BASE } from "../../lib/api";
 import { getRoleHome, setSession, type SessionData } from "../../lib/session";
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@vlink.local");
-  const [password, setPassword] = useState("admin1234");
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState("");
 
@@ -20,22 +21,22 @@ export default function LoginPage() {
     setNotice("");
 
     try {
-      const response = await fetch(`${API_BASE}/auth/login`, {
+      const response = await fetch(`${API_BASE}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ name, email, password }),
       });
 
       if (!response.ok) {
         const text = await response.text();
-        throw new Error(text || "Login failed");
+        throw new Error(text || "Signup failed");
       }
 
       const data = (await response.json()) as SessionData;
       setSession(data);
       router.push(getRoleHome(data.user.role));
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Login error";
+      const message = error instanceof Error ? error.message : "Signup error";
       setNotice(message);
     } finally {
       setLoading(false);
@@ -45,13 +46,17 @@ export default function LoginPage() {
   return (
     <main className={styles.page}>
       <section className={styles.card}>
-        <h1 className={styles.title}>V-Link Login</h1>
-        <p className={styles.subtitle}>Login and move to your role-based workspace.</p>
+        <h1 className={styles.title}>Create Requester Account</h1>
+        <p className={styles.subtitle}>Public signup creates a REQUESTER account.</p>
 
         <form className={styles.form} onSubmit={onSubmit}>
           <div className={styles.field}>
+            <label htmlFor="name">Name</label>
+            <input id="name" value={name} onChange={(event) => setName(event.target.value)} required minLength={2} />
+          </div>
+          <div className={styles.field}>
             <label htmlFor="email">Email</label>
-            <input id="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+            <input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
           </div>
           <div className={styles.field}>
             <label htmlFor="password">Password</label>
@@ -61,17 +66,18 @@ export default function LoginPage() {
               value={password}
               onChange={(event) => setPassword(event.target.value)}
               required
+              minLength={8}
             />
           </div>
           <button className={styles.button} type="submit" disabled={loading}>
-            {loading ? "Signing in..." : "Login"}
+            {loading ? "Signing up..." : "Sign up"}
           </button>
         </form>
 
         {notice && <div className={styles.notice}>{notice}</div>}
 
         <div className={styles.linkRow}>
-          Need a requester account? <a href="/signup">Sign up</a>
+          Already have an account? <a href="/login">Login</a>
         </div>
       </section>
     </main>

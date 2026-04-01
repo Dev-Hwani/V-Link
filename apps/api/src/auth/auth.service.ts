@@ -7,6 +7,7 @@ import { AuthUser } from "../common/interfaces/auth-user.interface";
 import { PrismaService } from "../prisma/prisma.service";
 import { LoginDto } from "./dto/login.dto";
 import { RegisterDto } from "./dto/register.dto";
+import { SignupDto } from "./dto/signup.dto";
 
 @Injectable()
 export class AuthService {
@@ -28,17 +29,37 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
-    const payload: AuthUser = {
+    return this.issueSessionToken({
       sub: user.id,
       email: user.email,
       role: user.role,
       vendorId: user.vendorId ?? null,
-    };
+    });
+  }
 
-    return {
-      accessToken: await this.jwtService.signAsync(payload),
-      user: payload,
-    };
+  async signupRequester(dto: SignupDto) {
+    const existing = await this.prisma.user.findUnique({ where: { email: dto.email } });
+    if (existing) {
+      throw new ConflictException("Email already exists");
+    }
+
+    const passwordHash = await bcrypt.hash(dto.password, 10);
+    const created = await this.prisma.user.create({
+      data: {
+        email: dto.email,
+        passwordHash,
+        name: dto.name,
+        role: Role.REQUESTER,
+        vendorId: null,
+      },
+    });
+
+    return this.issueSessionToken({
+      sub: created.id,
+      email: created.email,
+      role: created.role,
+      vendorId: null,
+    });
   }
 
   async register(actor: AuthUser, dto: RegisterDto) {
@@ -77,5 +98,12 @@ export class AuthService {
     });
 
     return created;
+  }
+
+  private async issueSessionToken(payload: AuthUser) {
+    return {
+      accessToken: await this.jwtService.signAsync(payload),
+      user: payload,
+    };
   }
 }

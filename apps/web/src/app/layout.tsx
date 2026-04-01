@@ -24,6 +24,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             </a>
             <nav className="app-nav">
               <a href="/login">Login</a>
+              <a href="/signup">Signup</a>
               <a href="/admin/requests">Admin</a>
               <a href="/requester">Requester</a>
               <a href="/dashboard">Dashboard</a>

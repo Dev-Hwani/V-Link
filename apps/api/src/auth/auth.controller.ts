@@ -7,6 +7,7 @@ import { RolesGuard } from "../common/guards/roles.guard";
 import { AuthUser } from "../common/interfaces/auth-user.interface";
 import { LoginDto } from "./dto/login.dto";
 import { RegisterDto } from "./dto/register.dto";
+import { SignupDto } from "./dto/signup.dto";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 import { AuthService } from "./auth.service";
 
@@ -17,6 +18,11 @@ export class AuthController {
   @Post("login")
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto);
+  }
+
+  @Post("signup")
+  signup(@Body() dto: SignupDto) {
+    return this.authService.signupRequester(dto);
   }
 
   @Post("register")

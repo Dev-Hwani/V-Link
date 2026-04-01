@@ -10,6 +10,7 @@ Monorepo scaffold for V-Link VAS workflow.
 ## Backend implemented (phase 1)
 
 - JWT auth (`/auth/login`, `/auth/register`)
+- Public requester signup (`/auth/signup`)
 - RBAC roles: `ADMIN`, `REQUESTER`, `VENDOR`
 - VAS request workflow endpoints
   - `POST /requests`
@@ -86,6 +87,7 @@ Default ports:
 Login entry:
 
 - `http://localhost:3000/login`
+- `http://localhost:3000/signup` (public requester signup)
 - One login redirects by role:
   - `ADMIN` -> `/admin/requests`
   - `REQUESTER` -> `/requester`

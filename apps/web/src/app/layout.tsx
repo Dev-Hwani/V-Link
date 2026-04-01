@@ -23,6 +23,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               V-Link
             </a>
             <nav className="app-nav">
+              <a href="/login">Login</a>
+              <a href="/admin/requests">Admin</a>
+              <a href="/requester">Requester</a>
               <a href="/dashboard">Dashboard</a>
               <a href="/calendar">Calendar</a>
               <a href="/vendor">Vendor</a>

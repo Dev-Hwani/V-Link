@@ -77,20 +77,34 @@ npm run dev:api
 npm run dev:web
 ```
 
+Default ports:
+
+- Web: `http://localhost:3000`
+- API: `http://localhost:4000` (configured by `PORT` in `apps/api/.env`)
+- Optional web env override: `NEXT_PUBLIC_API_BASE_URL` (default `http://localhost:4000`)
+
+Login entry:
+
+- `http://localhost:3000/login`
+- One login redirects by role:
+  - `ADMIN` -> `/admin/requests`
+  - `REQUESTER` -> `/requester`
+  - `VENDOR` -> `/vendor`
+
 ## Vendor screen
 
 - Open `http://localhost:3000/vendor` (or your Next.js dev port)
-- Login with seeded vendor account and process assigned work
+- Process assigned work (session-based)
 
 ## Calendar screen
 
 - Open `http://localhost:3000/calendar` (or your Next.js dev port)
-- Login and filter by date/vendor/status
+- Filter by date/vendor/status
 
 ## Dashboard screen
 
 - Open `http://localhost:3000/dashboard` (or your Next.js dev port)
-- Login and inspect request/vendor/SAP metrics
+- Inspect request/vendor/SAP metrics
 
 ## SAP queue/retry env
 

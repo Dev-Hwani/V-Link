@@ -1,0 +1,118 @@
+.page {
+  min-height: calc(100vh - 64px);
+  padding: 18px;
+  font-family: "Pretendard", "Noto Sans KR", "Segoe UI", sans-serif;
+}
+
+.header {
+  margin-bottom: 12px;
+}
+
+.title {
+  margin: 0;
+  font-size: 28px;
+}
+
+.subtitle {
+  margin-top: 6px;
+  color: #5d6678;
+}
+
+.notice {
+  margin-bottom: 10px;
+  border: 1px solid #ffd7a8;
+  border-radius: 10px;
+  background: #fff2dd;
+  color: #7a4700;
+  padding: 8px 10px;
+  font-size: 13px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.card {
+  border: 1px solid #d8dfea;
+  border-radius: 12px;
+  background: #fff;
+  padding: 12px;
+  box-shadow: 0 8px 20px rgba(20, 35, 58, 0.06);
+}
+
+.sectionTitle {
+  margin: 0 0 10px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.field label {
+  font-size: 13px;
+  color: #5d6678;
+}
+
+.field input,
+.field textarea,
+.field select {
+  border: 1px solid #c8cfdd;
+  border-radius: 10px;
+  padding: 9px 10px;
+  font-size: 14px;
+}
+
+.field textarea {
+  min-height: 88px;
+  resize: vertical;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.button {
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: #2f6ddd;
+  cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.list {
+  display: grid;
+  gap: 8px;
+}
+
+.item {
+  border: 1px solid #d8dfea;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.meta {
+  margin-top: 6px;
+  color: #5d6678;
+  font-size: 13px;
+}
+
+@media (max-width: 960px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+

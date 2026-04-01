@@ -1,0 +1,80 @@
+.page {
+  min-height: calc(100vh - 64px);
+  padding: 24px;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(circle at 15% 15%, #dff4ff 0, transparent 40%),
+    radial-gradient(circle at 85% 85%, #e5ffea 0, transparent 36%),
+    #f5f8fc;
+  font-family: "Pretendard", "Noto Sans KR", "Segoe UI", sans-serif;
+}
+
+.card {
+  width: min(480px, 100%);
+  border: 1px solid #d8dfeb;
+  border-radius: 16px;
+  background: #fff;
+  box-shadow: 0 10px 24px rgba(25, 38, 62, 0.08);
+  padding: 18px;
+}
+
+.title {
+  margin: 0;
+  font-size: 28px;
+}
+
+.subtitle {
+  margin-top: 8px;
+  color: #5b6475;
+}
+
+.form {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.field {
+  display: grid;
+  gap: 6px;
+}
+
+.field label {
+  font-size: 13px;
+  color: #5b6475;
+}
+
+.field input {
+  border: 1px solid #c8cfdd;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+}
+
+.button {
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: #2f6ddd;
+  cursor: pointer;
+}
+
+.button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.notice {
+  margin-top: 10px;
+  border: 1px solid #ffd7a3;
+  border-radius: 10px;
+  background: #fff2dc;
+  color: #774500;
+  font-size: 13px;
+  padding: 8px 10px;
+}
+

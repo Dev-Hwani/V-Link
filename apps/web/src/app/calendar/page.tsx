@@ -4,9 +4,12 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import type { DatesSetArg, EventClickArg, EventInput } from "@fullcalendar/core/index.js";
 import FullCalendar from "@fullcalendar/react";
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import styles from "./calendar.module.css";
+import { apiJson } from "../../lib/api";
+import { clearSession, getRoleHome, getSession } from "../../lib/session";
 
 type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "IN_PROGRESS" | "COMPLETED";
 
@@ -27,8 +30,6 @@ interface SelectedEventInfo {
   requesterName: string;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000";
-
 function formatDateInput(date: Date) {
   return date.toISOString().slice(0, 10);
 }
@@ -40,27 +41,9 @@ function defaultRange() {
   return { from: formatDateInput(from), to: formatDateInput(to) };
 }
 
-async function fetchJson<T>(path: string, token: string): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || `HTTP ${response.status}`);
-  }
-
-  return (await response.json()) as T;
-}
-
 export default function CalendarPage() {
+  const router = useRouter();
   const initialRange = useMemo(() => defaultRange(), []);
-
-  const [email, setEmail] = useState("admin@vlink.local");
-  const [password, setPassword] = useState("admin1234");
   const [token, setToken] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
@@ -71,6 +54,21 @@ export default function CalendarPage() {
   const [to, setTo] = useState(initialRange.to);
   const [events, setEvents] = useState<EventInput[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<SelectedEventInfo | null>(null);
+
+  useEffect(() => {
+    const session = getSession();
+    if (!session) {
+      router.replace("/login");
+      return;
+    }
+
+    if (session.user.role === "VENDOR") {
+      router.replace("/vendor");
+      return;
+    }
+
+    setToken(session.accessToken);
+  }, [router]);
 
   useEffect(() => {
     if (!token) {
@@ -86,39 +84,12 @@ export default function CalendarPage() {
     void loadEvents(token);
   }, [token, from, to, vendorId, status]);
 
-  async function onLogin(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setLoading(true);
-    setNotice("");
-
-    try {
-      const response = await fetch(`${API_BASE}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        throw new Error("로그인 실패: 계정을 확인하세요.");
-      }
-
-      const data = (await response.json()) as { accessToken: string };
-      setToken(data.accessToken);
-      setNotice("로그인 성공. 캘린더를 불러왔습니다.");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "로그인 오류";
-      setNotice(message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   async function loadVendors(currentToken: string) {
     try {
-      const data = await fetchJson<VendorOption[]>("/calendar/vendors", currentToken);
+      const data = await apiJson<VendorOption[]>("/calendar/vendors", currentToken, { method: "GET" });
       setVendors(data);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "업체 목록 조회 실패";
+      const message = error instanceof Error ? error.message : "업체 목록 조회 오류";
       setNotice(message);
     }
   }
@@ -136,10 +107,12 @@ export default function CalendarPage() {
         query.set("status", status);
       }
 
-      const data = await fetchJson<EventInput[]>(`/calendar/events?${query.toString()}`, currentToken);
+      const data = await apiJson<EventInput[]>(`/calendar/events?${query.toString()}`, currentToken, {
+        method: "GET",
+      });
       setEvents(data);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "캘린더 조회 실패";
+      const message = error instanceof Error ? error.message : "캘린더 조회 오류";
       setNotice(message);
     } finally {
       setLoading(false);
@@ -177,106 +150,86 @@ export default function CalendarPage() {
     });
   }
 
+  function logout() {
+    clearSession();
+    router.replace("/login");
+  }
+
   return (
     <main className={styles.page}>
       <header className={styles.header}>
         <h1 className={styles.title}>VAS Calendar</h1>
-        <p className={styles.subtitle}>업체/일자 필터로 작업 일정을 확인합니다.</p>
+        <p className={styles.subtitle}>업체/일자/상태 필터로 작업 일정을 확인합니다.</p>
       </header>
 
-      {!token && (
-        <section className={styles.card}>
-          <form className={styles.loginForm} onSubmit={onLogin}>
+      <section className={styles.topGrid}>
+        <div className={styles.card}>
+          {notice && <div className={styles.notice}>{notice}</div>}
+          <div className={styles.filters}>
             <div className={styles.field}>
-              <label htmlFor="email">Email</label>
-              <input id="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+              <label htmlFor="from">From</label>
+              <input id="from" type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
             </div>
             <div className={styles.field}>
-              <label htmlFor="password">Password</label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                required
-              />
+              <label htmlFor="to">To</label>
+              <input id="to" type="date" value={to} onChange={(event) => setTo(event.target.value)} />
             </div>
-            <button className={styles.button} type="submit" disabled={loading}>
-              {loading ? "로그인 중..." : "관리자 로그인"}
-            </button>
-          </form>
-        </section>
-      )}
-
-      {token && (
-        <>
-          <section className={styles.topGrid}>
-            <div className={styles.card}>
-              {notice && <div className={styles.notice}>{notice}</div>}
-              <div className={styles.filters}>
-                <div className={styles.field}>
-                  <label htmlFor="from">From</label>
-                  <input id="from" type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
-                </div>
-                <div className={styles.field}>
-                  <label htmlFor="to">To</label>
-                  <input id="to" type="date" value={to} onChange={(event) => setTo(event.target.value)} />
-                </div>
-                <div className={styles.field}>
-                  <label htmlFor="vendor">Vendor</label>
-                  <select id="vendor" value={vendorId} onChange={(event) => setVendorId(event.target.value)}>
-                    <option value="">All</option>
-                    {vendors.map((vendor) => (
-                      <option key={vendor.id} value={vendor.id}>
-                        {vendor.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className={styles.field}>
-                  <label htmlFor="status">Status</label>
-                  <select id="status" value={status} onChange={(event) => setStatus(event.target.value as RequestStatus | "")}>
-                    <option value="">All</option>
-                    <option value="PENDING">PENDING</option>
-                    <option value="APPROVED">APPROVED</option>
-                    <option value="IN_PROGRESS">IN_PROGRESS</option>
-                    <option value="COMPLETED">COMPLETED</option>
-                    <option value="REJECTED">REJECTED</option>
-                  </select>
-                </div>
-              </div>
+            <div className={styles.field}>
+              <label htmlFor="vendor">Vendor</label>
+              <select id="vendor" value={vendorId} onChange={(event) => setVendorId(event.target.value)}>
+                <option value="">All</option>
+                {vendors.map((vendor) => (
+                  <option key={vendor.id} value={vendor.id}>
+                    {vendor.name}
+                  </option>
+                ))}
+              </select>
             </div>
-            <aside className={styles.card}>
-              <h2 className={styles.selectedTitle}>선택된 일정</h2>
-              {!selectedEvent && <p className={styles.selectedItem}>일정을 클릭하면 상세를 확인할 수 있습니다.</p>}
-              {selectedEvent && (
-                <div className={styles.selected}>
-                  <p className={styles.selectedItem}>{selectedEvent.title}</p>
-                  <p className={styles.selectedItem}>일자: {selectedEvent.start}</p>
-                  <p className={styles.selectedItem}>상태: {selectedEvent.status || "-"}</p>
-                  <p className={styles.selectedItem}>유형: {selectedEvent.requestType || "-"}</p>
-                  <p className={styles.selectedItem}>팀: {selectedEvent.team || "-"}</p>
-                  <p className={styles.selectedItem}>업체: {selectedEvent.vendorName}</p>
-                  <p className={styles.selectedItem}>요청자: {selectedEvent.requesterName}</p>
-                  <p className={styles.selectedItem}>설명: {selectedEvent.description || "-"}</p>
-                </div>
-              )}
-            </aside>
-          </section>
+            <div className={styles.field}>
+              <label htmlFor="status">Status</label>
+              <select id="status" value={status} onChange={(event) => setStatus(event.target.value as RequestStatus | "")}>
+                <option value="">All</option>
+                <option value="PENDING">PENDING</option>
+                <option value="APPROVED">APPROVED</option>
+                <option value="IN_PROGRESS">IN_PROGRESS</option>
+                <option value="COMPLETED">COMPLETED</option>
+                <option value="REJECTED">REJECTED</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <aside className={styles.card}>
+          <h2 className={styles.selectedTitle}>선택 일정</h2>
+          {!selectedEvent && <p className={styles.selectedItem}>일정을 클릭하면 상세를 확인할 수 있습니다.</p>}
+          {selectedEvent && (
+            <div className={styles.selected}>
+              <p className={styles.selectedItem}>{selectedEvent.title}</p>
+              <p className={styles.selectedItem}>일자: {selectedEvent.start}</p>
+              <p className={styles.selectedItem}>상태: {selectedEvent.status || "-"}</p>
+              <p className={styles.selectedItem}>유형: {selectedEvent.requestType || "-"}</p>
+              <p className={styles.selectedItem}>팀: {selectedEvent.team || "-"}</p>
+              <p className={styles.selectedItem}>업체: {selectedEvent.vendorName}</p>
+              <p className={styles.selectedItem}>요청자: {selectedEvent.requesterName}</p>
+              <p className={styles.selectedItem}>설명: {selectedEvent.description || "-"}</p>
+            </div>
+          )}
+          <button className={styles.button} type="button" onClick={logout} disabled={loading}>
+            로그아웃
+          </button>
+        </aside>
+      </section>
 
-          <section className={`${styles.card} ${styles.calendarWrap}`}>
-            <FullCalendar
-              plugins={[dayGridPlugin, interactionPlugin]}
-              initialView="dayGridMonth"
-              events={events}
-              eventClick={onEventClick}
-              datesSet={onDatesSet}
-              height="auto"
-              locale="ko"
-            />
-          </section>
-        </>
-      )}
+      <section className={`${styles.card} ${styles.calendarWrap}`}>
+        <FullCalendar
+          plugins={[dayGridPlugin, interactionPlugin]}
+          initialView="dayGridMonth"
+          events={events}
+          eventClick={onEventClick}
+          datesSet={onDatesSet}
+          height="auto"
+          locale="ko"
+        />
+      </section>
     </main>
   );
 }

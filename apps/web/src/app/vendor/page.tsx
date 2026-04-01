@@ -1,8 +1,11 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 
 import styles from "./vendor.module.css";
+import { apiJson } from "../../lib/api";
+import { clearSession, getRoleHome, getSession } from "../../lib/session";
 
 type RequestStatus = "PENDING" | "APPROVED" | "IN_PROGRESS" | "COMPLETED" | "REJECTED";
 
@@ -31,30 +34,8 @@ interface RequestDetail extends RequestSummary {
   histories: Array<{ id: string; toStatus: RequestStatus; reason: string | null; createdAt: string }>;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3000";
-
-async function requestJson<T>(path: string, token: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-      ...(init?.headers ?? {}),
-    },
-    cache: "no-store",
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(text || `Request failed: ${response.status}`);
-  }
-
-  return (await response.json()) as T;
-}
-
 export default function VendorPage() {
-  const [email, setEmail] = useState("vendor@vlink.local");
-  const [password, setPassword] = useState("vendor1234");
+  const router = useRouter();
   const [token, setToken] = useState("");
   const [requests, setRequests] = useState<RequestSummary[]>([]);
   const [selectedId, setSelectedId] = useState("");
@@ -72,10 +53,24 @@ export default function VendorPage() {
   }, [selectedStatus]);
 
   useEffect(() => {
-    if (!token) {
+    const session = getSession();
+    if (!session) {
+      router.replace("/login");
       return;
     }
 
+    if (session.user.role !== "VENDOR") {
+      router.replace(getRoleHome(session.user.role));
+      return;
+    }
+
+    setToken(session.accessToken);
+  }, [router]);
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
     void loadRequests(token);
   }, [token]);
 
@@ -83,41 +78,13 @@ export default function VendorPage() {
     if (!token || !selectedId) {
       return;
     }
-
     void loadDetail(token, selectedId);
   }, [token, selectedId]);
-
-  async function onLogin(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setLoading(true);
-    setNotice("");
-
-    try {
-      const response = await fetch(`${API_BASE}/auth/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        throw new Error("로그인 실패: 계정 정보를 확인하세요.");
-      }
-
-      const data = (await response.json()) as { accessToken: string };
-      setToken(data.accessToken);
-      setNotice("로그인 성공. 배정 목록을 불러왔습니다.");
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "로그인 오류";
-      setNotice(message);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   async function loadRequests(currentToken: string) {
     setLoading(true);
     try {
-      const data = await requestJson<RequestSummary[]>("/requests", currentToken, { method: "GET" });
+      const data = await apiJson<RequestSummary[]>("/requests", currentToken, { method: "GET" });
       setRequests(data);
 
       if (data.length === 0) {
@@ -137,7 +104,7 @@ export default function VendorPage() {
 
   async function loadDetail(currentToken: string, requestId: string) {
     try {
-      const data = await requestJson<RequestDetail>(`/requests/${requestId}`, currentToken, { method: "GET" });
+      const data = await apiJson<RequestDetail>(`/requests/${requestId}`, currentToken, { method: "GET" });
       setSelected(data);
       setNote("");
     } catch (error) {
@@ -153,10 +120,10 @@ export default function VendorPage() {
 
     setLoading(true);
     try {
-      await requestJson(`/requests/${selectedId}/start`, token, { method: "PATCH", body: JSON.stringify({}) });
+      await apiJson(`/requests/${selectedId}/start`, token, { method: "PATCH" });
       await loadRequests(token);
       await loadDetail(token, selectedId);
-      setNotice("작업을 시작했습니다.");
+      setNotice("작업 시작 처리 완료");
     } catch (error) {
       const message = error instanceof Error ? error.message : "작업 시작 오류";
       setNotice(message);
@@ -172,13 +139,14 @@ export default function VendorPage() {
 
     setLoading(true);
     try {
-      await requestJson(`/requests/${selectedId}/complete`, token, {
+      await apiJson(`/requests/${selectedId}/complete`, token, {
         method: "PATCH",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ note }),
       });
       await loadRequests(token);
       await loadDetail(token, selectedId);
-      setNotice("작업을 완료 처리했습니다.");
+      setNotice("작업 완료 처리 완료");
     } catch (error) {
       const message = error instanceof Error ? error.message : "작업 완료 오류";
       setNotice(message);
@@ -187,44 +155,17 @@ export default function VendorPage() {
     }
   }
 
+  function logout() {
+    clearSession();
+    router.replace("/login");
+  }
+
   return (
     <main className={styles.page}>
       <header className={styles.header}>
         <h1 className={styles.title}>Vendor Work Console</h1>
-        <p className={styles.subtitle}>배정된 VAS 작업 목록, 상세 확인, 시작/완료 처리를 수행합니다.</p>
+        <p className={styles.subtitle}>배정된 작업 확인 및 시작/완료 처리를 수행합니다.</p>
       </header>
-
-      {!token && (
-        <section className={styles.card}>
-          <form className={styles.loginForm} onSubmit={onLogin}>
-            <div className={styles.field}>
-              <label htmlFor="email">Email</label>
-              <input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(event) => setEmail(event.target.value)}
-                autoComplete="username"
-                required
-              />
-            </div>
-            <div className={styles.field}>
-              <label htmlFor="password">Password</label>
-              <input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                autoComplete="current-password"
-                required
-              />
-            </div>
-            <button className={styles.button} type="submit" disabled={loading}>
-              {loading ? "로그인 중..." : "업체 로그인"}
-            </button>
-          </form>
-        </section>
-      )}
 
       {token && (
         <section className={styles.grid}>
@@ -246,11 +187,12 @@ export default function VendorPage() {
                       <span className={`${styles.badge} ${styles[request.status]}`}>{request.status}</span>
                     </div>
                     <p className={styles.meta}>
-                      {request.requestType} · {request.team} · 납기 {new Date(request.dueDate).toLocaleDateString()}
+                      {request.requestType} / {request.team} / 납기 {new Date(request.dueDate).toLocaleDateString()}
                     </p>
                   </button>
                 );
               })}
+              {requests.length === 0 && <p>작업이 없습니다.</p>}
             </div>
           </article>
 
@@ -292,12 +234,12 @@ export default function VendorPage() {
                     id="note"
                     value={note}
                     onChange={(event) => setNote(event.target.value)}
-                    placeholder="완료 시 전달할 메모를 입력하세요."
+                    placeholder="완료 메모를 입력하세요."
                   />
                 </div>
 
                 <div className={styles.actions}>
-                  <button className={styles.button} type="button" onClick={() => void loadRequests(token)}>
+                  <button className={styles.button} type="button" onClick={() => void loadRequests(token)} disabled={loading}>
                     목록 새로고침
                   </button>
                   <button
@@ -316,6 +258,9 @@ export default function VendorPage() {
                   >
                     완료 처리
                   </button>
+                  <button className={styles.button} type="button" onClick={logout}>
+                    로그아웃
+                  </button>
                 </div>
 
                 <h3 className={styles.sectionTitle} style={{ marginTop: "16px" }}>
@@ -324,8 +269,8 @@ export default function VendorPage() {
                 <ol className={styles.timeline}>
                   {selected.histories.map((history) => (
                     <li key={history.id}>
-                      {history.toStatus} · {new Date(history.createdAt).toLocaleString()}
-                      {history.reason ? ` · ${history.reason}` : ""}
+                      {history.toStatus} / {new Date(history.createdAt).toLocaleString()}
+                      {history.reason ? ` / ${history.reason}` : ""}
                     </li>
                   ))}
                 </ol>

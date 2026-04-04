@@ -1,12 +1,9 @@
-.page {
-  min-height: 100vh;
-  padding: 24px;
-  background:
-    radial-gradient(circle at 18% 8%, #d9f2ff 0, transparent 42%),
-    radial-gradient(circle at 85% 85%, #e2ffe9 0, transparent 36%),
-    #f7f9fc;
-  font-family: "Pretendard", "Noto Sans KR", "Segoe UI", sans-serif;
-  color: #1f2430;
+﻿.page {
+  min-height: 100%;
+  padding: 20px;
+  background: var(--teams-bg);
+  font-family: "Segoe UI", "Pretendard", "Noto Sans KR", sans-serif;
+  color: var(--teams-text);
 }
 
 .header {
@@ -21,15 +18,15 @@
 
 .subtitle {
   margin-top: 8px;
-  color: #596273;
+  color: var(--teams-muted);
 }
 
 .card {
-  border: 1px solid #d8dfeb;
-  border-radius: 14px;
-  background: #fff;
+  border: 1px solid var(--teams-border);
+  border-radius: 12px;
+  background: var(--teams-surface);
   padding: 14px;
-  box-shadow: 0 8px 22px rgba(20, 33, 56, 0.06);
+  box-shadow: var(--teams-shadow);
 }
 
 .loginForm {
@@ -45,21 +42,28 @@
 
 .field label {
   font-size: 13px;
-  color: #596273;
+  color: var(--teams-muted);
 }
 
 .field input,
 .field select {
   border: 1px solid #c8cfdd;
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 9px 11px;
   font-size: 14px;
 }
 
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--teams-primary);
+  box-shadow: 0 0 0 3px rgba(98, 100, 167, 0.18);
+}
+
 .button {
   border: 0;
-  border-radius: 10px;
-  background: #2c69dd;
+  border-radius: 8px;
+  background: var(--teams-primary);
   color: #fff;
   padding: 10px 14px;
   font-size: 14px;
@@ -74,7 +78,7 @@
 
 .topGrid {
   display: grid;
-  grid-template-columns: 1fr 300px;
+  grid-template-columns: 1fr 320px;
   gap: 12px;
   margin-bottom: 12px;
 }
@@ -85,12 +89,18 @@
   gap: 10px;
 }
 
+.actions {
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
+
 .notice {
   margin-bottom: 8px;
-  border: 1px solid #fde2b2;
-  background: #fff3dd;
-  color: #7a4a00;
-  border-radius: 10px;
+  border: 1px solid #f0c9ce;
+  background: #fff4f5;
+  color: #8a2f3d;
+  border-radius: 8px;
   padding: 8px 10px;
   font-size: 13px;
 }
@@ -129,4 +139,3 @@
     grid-template-columns: repeat(2, minmax(120px, 1fr));
   }
 }
-

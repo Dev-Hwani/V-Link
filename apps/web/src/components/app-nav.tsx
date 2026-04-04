@@ -1,9 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-import { clearSession, getSession, getRoleHome, type SessionData } from "../lib/session";
+import { clearSession, getSession, type SessionData } from "../lib/session";
+import { roleLabel } from "../lib/display";
 
 export function AppNav() {
   const router = useRouter();
@@ -31,41 +33,62 @@ export function AppNav() {
     router.refresh();
   }
 
+  function isActive(path: string) {
+    if (path === "/") {
+      return pathname === "/";
+    }
+
+    return pathname === path || pathname.startsWith(`${path}/`);
+  }
+
+  const roleMenus: Array<{ href: string; label: string }> =
+    session?.user.role === "ADMIN"
+      ? [
+          { href: "/admin/requests", label: "작업" },
+          { href: "/dashboard", label: "대시보드" },
+          { href: "/calendar", label: "캘린더" },
+        ]
+      : session?.user.role === "REQUESTER"
+        ? [
+            { href: "/requester", label: "작업" },
+            { href: "/calendar", label: "캘린더" },
+          ]
+        : session?.user.role === "VENDOR"
+          ? [{ href: "/vendor", label: "작업" }]
+          : [];
+
   return (
     <nav className="app-nav">
       {!session && (
-        <>
-          <a href="/login">Login</a>
-          <a href="/signup">Signup</a>
-        </>
-      )}
-
-      {session?.user.role === "ADMIN" && (
-        <>
-          <a href="/admin/requests">Admin</a>
-          <a href="/dashboard">Dashboard</a>
-          <a href="/calendar">Calendar</a>
-        </>
-      )}
-
-      {session?.user.role === "REQUESTER" && (
-        <>
-          <a href="/requester">Requester</a>
-          <a href="/calendar">Calendar</a>
-        </>
-      )}
-
-      {session?.user.role === "VENDOR" && (
-        <>
-          <a href="/vendor">Vendor</a>
-        </>
+        <div className="app-nav-group">
+          <Link className={`app-nav-link ${isActive("/login") ? "app-nav-link-active" : ""}`} href="/login">
+            로그인
+          </Link>
+          <Link className={`app-nav-link ${isActive("/signup") ? "app-nav-link-active" : ""}`} href="/signup">
+            회원가입
+          </Link>
+        </div>
       )}
 
       {session && (
         <>
-          <a href={getRoleHome(session.user.role)}>Home</a>
+          <div className="app-user-card">
+            <span className="app-nav-meta-role">{roleLabel(session.user.role)}</span>
+            <span className="app-nav-meta-email">{session.user.email}</span>
+          </div>
+          <div className="app-nav-group">
+            {roleMenus.map((menu) => (
+              <Link
+                key={menu.href}
+                className={`app-nav-link ${isActive(menu.href) ? "app-nav-link-active" : ""}`}
+                href={menu.href}
+              >
+                {menu.label}
+              </Link>
+            ))}
+          </div>
           <button type="button" className="app-nav-button" onClick={onLogout}>
-            Logout
+            로그아웃
           </button>
         </>
       )}

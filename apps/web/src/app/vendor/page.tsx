@@ -1,10 +1,11 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "./vendor.module.css";
 import { apiJson } from "../../lib/api";
+import { requestStatusLabel, requestTypeLabel } from "../../lib/display";
 import { getRoleHome, getSession } from "../../lib/session";
 
 type RequestStatus = "PENDING" | "APPROVED" | "IN_PROGRESS" | "COMPLETED" | "REJECTED";
@@ -51,6 +52,21 @@ export default function VendorPage() {
   const selectedStatusClass = useMemo(() => {
     return `${styles.badge} ${styles[selectedStatus] ?? styles.PENDING}`;
   }, [selectedStatus]);
+  const summary = useMemo(() => {
+    const base = {
+      PENDING: 0,
+      APPROVED: 0,
+      REJECTED: 0,
+      IN_PROGRESS: 0,
+      COMPLETED: 0,
+    };
+
+    requests.forEach((item) => {
+      base[item.status] += 1;
+    });
+
+    return base;
+  }, [requests]);
 
   useEffect(() => {
     const session = getSession();
@@ -95,7 +111,7 @@ export default function VendorPage() {
         setSelectedId(data[0].id);
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "목록 조회 오류";
+      const message = error instanceof Error ? error.message : "목록 조회에 실패했습니다.";
       setNotice(message);
     } finally {
       setLoading(false);
@@ -108,7 +124,7 @@ export default function VendorPage() {
       setSelected(data);
       setNote("");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "상세 조회 오류";
+      const message = error instanceof Error ? error.message : "상세 조회에 실패했습니다.";
       setNotice(message);
     }
   }
@@ -125,7 +141,7 @@ export default function VendorPage() {
       await loadDetail(token, selectedId);
       setNotice("작업 시작 처리 완료");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "작업 시작 오류";
+      const message = error instanceof Error ? error.message : "작업 시작 처리에 실패했습니다.";
       setNotice(message);
     } finally {
       setLoading(false);
@@ -148,7 +164,7 @@ export default function VendorPage() {
       await loadDetail(token, selectedId);
       setNotice("작업 완료 처리 완료");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "작업 완료 오류";
+      const message = error instanceof Error ? error.message : "작업 완료 처리에 실패했습니다.";
       setNotice(message);
     } finally {
       setLoading(false);
@@ -158,9 +174,24 @@ export default function VendorPage() {
   return (
     <main className={styles.page}>
       <header className={styles.header}>
-        <h1 className={styles.title}>Vendor Work Console</h1>
-        <p className={styles.subtitle}>배정된 작업 확인 및 시작/완료 처리를 수행합니다.</p>
+        <h1 className={styles.title}>업체 작업 화면</h1>
+        <p className={styles.subtitle}>배정된 작업 확인 후 시작/완료 상태를 업데이트합니다.</p>
       </header>
+
+      <section className={styles.summaryRow}>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>승인 대기 작업</span>
+          <strong>{summary.APPROVED}</strong>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>진행 중 작업</span>
+          <strong>{summary.IN_PROGRESS}</strong>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>완료 작업</span>
+          <strong>{summary.COMPLETED}</strong>
+        </article>
+      </section>
 
       {token && (
         <section className={styles.grid}>
@@ -179,21 +210,22 @@ export default function VendorPage() {
                   >
                     <div className={styles.rowTop}>
                       <p className={styles.requestTitle}>{request.title}</p>
-                      <span className={`${styles.badge} ${styles[request.status]}`}>{request.status}</span>
+                      <span className={`${styles.badge} ${styles[request.status]}`}>{requestStatusLabel(request.status)}</span>
                     </div>
                     <p className={styles.meta}>
-                      {request.requestType} / {request.team} / 납기 {new Date(request.dueDate).toLocaleDateString()}
+                      {requestTypeLabel(request.requestType)} / {request.team} / 마감{" "}
+                      {new Date(request.dueDate).toLocaleDateString()}
                     </p>
                   </button>
                 );
               })}
-              {requests.length === 0 && <p>작업이 없습니다.</p>}
+              {requests.length === 0 && <p>배정된 요청이 없습니다.</p>}
             </div>
           </article>
 
           <article className={styles.card}>
             <h2 className={styles.sectionTitle}>작업 상세</h2>
-            {!selected && <p>작업을 선택하세요.</p>}
+            {!selected && <p>왼쪽 목록에서 요청을 선택하세요.</p>}
             {selected && (
               <>
                 <div className={styles.detailRows}>
@@ -203,18 +235,18 @@ export default function VendorPage() {
                   </div>
                   <div className={styles.detailRow}>
                     <span className={styles.detailLabel}>상태</span>
-                    <span className={selectedStatusClass}>{selected.status}</span>
+                    <span className={selectedStatusClass}>{requestStatusLabel(selected.status)}</span>
                   </div>
                   <div className={styles.detailRow}>
-                    <span className={styles.detailLabel}>유형/팀</span>
-                    {selected.requestType} / {selected.team}
+                    <span className={styles.detailLabel}>유형 / 팀</span>
+                    {requestTypeLabel(selected.requestType)} / {selected.team}
                   </div>
                   <div className={styles.detailRow}>
-                    <span className={styles.detailLabel}>납기</span>
+                    <span className={styles.detailLabel}>마감일</span>
                     {new Date(selected.dueDate).toLocaleString()}
                   </div>
                   <div className={styles.detailRow}>
-                    <span className={styles.detailLabel}>배정업체</span>
+                    <span className={styles.detailLabel}>업체</span>
                     {selected.assignedVendor?.name ?? "-"}
                   </div>
                   <div className={styles.detailRow}>
@@ -229,7 +261,7 @@ export default function VendorPage() {
                     id="note"
                     value={note}
                     onChange={(event) => setNote(event.target.value)}
-                    placeholder="완료 메모를 입력하세요."
+                    placeholder="완료 메모를 입력하세요"
                   />
                 </div>
 
@@ -261,7 +293,7 @@ export default function VendorPage() {
                 <ol className={styles.timeline}>
                   {selected.histories.map((history) => (
                     <li key={history.id}>
-                      {history.toStatus} / {new Date(history.createdAt).toLocaleString()}
+                      {requestStatusLabel(history.toStatus)} / {new Date(history.createdAt).toLocaleString()}
                       {history.reason ? ` / ${history.reason}` : ""}
                     </li>
                   ))}

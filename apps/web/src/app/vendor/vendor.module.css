@@ -1,16 +1,13 @@
-.page {
-  min-height: 100vh;
-  padding: 24px;
-  background:
-    radial-gradient(circle at 10% 15%, #d9f7e8 0, transparent 45%),
-    radial-gradient(circle at 85% 10%, #d8ebff 0, transparent 38%),
-    #f6f8fb;
-  font-family: "Pretendard", "Noto Sans KR", "Segoe UI", sans-serif;
-  color: #1f2430;
+﻿.page {
+  min-height: 100%;
+  padding: 18px;
+  background: var(--teams-bg);
+  font-family: "Segoe UI", "Pretendard", "Noto Sans KR", sans-serif;
+  color: var(--teams-text);
 }
 
 .header {
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 
 .title {
@@ -21,21 +18,15 @@
 
 .subtitle {
   margin-top: 8px;
-  color: #556070;
+  color: var(--teams-muted);
 }
 
 .card {
-  background: #fff;
-  border: 1px solid #d8dde6;
-  border-radius: 16px;
-  padding: 16px;
-  box-shadow: 0 8px 24px rgba(24, 38, 64, 0.05);
-}
-
-.loginForm {
-  display: grid;
-  gap: 10px;
-  max-width: 420px;
+  background: var(--teams-surface);
+  border: 1px solid var(--teams-border);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: var(--teams-shadow);
 }
 
 .field {
@@ -45,17 +36,24 @@
 
 .field label {
   font-size: 13px;
-  color: #556070;
+  color: var(--teams-muted);
 }
 
 .field input,
 .field textarea {
   width: 100%;
   border: 1px solid #c8cfdb;
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 10px 12px;
   font-size: 14px;
   background: #fff;
+}
+
+.field input:focus,
+.field textarea:focus {
+  outline: none;
+  border-color: var(--teams-primary);
+  box-shadow: 0 0 0 3px rgba(98, 100, 167, 0.18);
 }
 
 .field textarea {
@@ -66,12 +64,12 @@
 .button {
   appearance: none;
   border: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 10px 14px;
   font-size: 14px;
   font-weight: 600;
   color: #fff;
-  background: #2b62d9;
+  background: var(--teams-primary);
   cursor: pointer;
 }
 
@@ -81,11 +79,33 @@
 }
 
 .buttonAlt {
-  background: #0d7a5a;
+  background: #2d7d61;
 }
 
 .buttonGhost {
-  background: #6c7382;
+  background: #7a8192;
+}
+
+.summaryRow {
+  margin-bottom: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.summaryCard {
+  border: 1px solid var(--teams-border);
+  border-radius: 10px;
+  padding: 10px;
+  background: #fff;
+  box-shadow: 0 4px 14px rgba(24, 38, 64, 0.04);
+  display: grid;
+  gap: 4px;
+}
+
+.summaryLabel {
+  font-size: 12px;
+  color: var(--teams-muted);
 }
 
 .grid {
@@ -100,16 +120,16 @@
 }
 
 .item {
-  border: 1px solid #d6dce8;
-  border-radius: 12px;
+  border: 1px solid var(--teams-border);
+  border-radius: 10px;
   padding: 12px;
   cursor: pointer;
   background: #fff;
 }
 
 .itemActive {
-  border-color: #2b62d9;
-  box-shadow: 0 0 0 2px rgba(43, 98, 217, 0.18);
+  border-color: var(--teams-primary);
+  box-shadow: 0 0 0 2px rgba(98, 100, 167, 0.2);
 }
 
 .rowTop {
@@ -128,7 +148,7 @@
 .meta {
   margin-top: 8px;
   font-size: 13px;
-  color: #5e6678;
+  color: var(--teams-muted);
 }
 
 .badge {
@@ -146,8 +166,8 @@
 }
 
 .APPROVED {
-  background: #dff0ff;
-  color: #1c5db0;
+  background: #e6ebfb;
+  color: #2f388f;
 }
 
 .IN_PROGRESS {
@@ -182,7 +202,7 @@
 }
 
 .detailLabel {
-  color: #6c7382;
+  color: var(--teams-muted);
   margin-right: 8px;
 }
 
@@ -204,16 +224,19 @@
 .notice {
   margin-bottom: 10px;
   font-size: 13px;
-  color: #7d3e00;
-  background: #fff2e2;
-  border: 1px solid #ffe0bf;
+  color: #8a2f3d;
+  background: #fff4f5;
+  border: 1px solid #f0c9ce;
   padding: 8px 10px;
-  border-radius: 10px;
+  border-radius: 8px;
 }
 
 @media (max-width: 960px) {
+  .summaryRow {
+    grid-template-columns: 1fr;
+  }
+
   .grid {
     grid-template-columns: 1fr;
   }
 }
-

@@ -1,10 +1,11 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "./admin-requests.module.css";
 import { apiJson } from "../../../lib/api";
+import { requestStatusLabel, requestTypeLabel } from "../../../lib/display";
 import { getRoleHome, getSession } from "../../../lib/session";
 
 type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "IN_PROGRESS" | "COMPLETED";
@@ -39,6 +40,22 @@ export default function AdminRequestsPage() {
   const [loading, setLoading] = useState(false);
 
   const selected = useMemo(() => requests.find((item) => item.id === selectedId) ?? null, [requests, selectedId]);
+  const canProcessSelected = selected?.status === "PENDING";
+  const summary = useMemo(() => {
+    const base = {
+      PENDING: 0,
+      APPROVED: 0,
+      REJECTED: 0,
+      IN_PROGRESS: 0,
+      COMPLETED: 0,
+    };
+
+    requests.forEach((item) => {
+      base[item.status] += 1;
+    });
+
+    return base;
+  }, [requests]);
 
   useEffect(() => {
     const session = getSession();
@@ -81,7 +98,7 @@ export default function AdminRequestsPage() {
         setSelectedId("");
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "데이터 조회 오류";
+      const message = error instanceof Error ? error.message : "데이터 조회에 실패했습니다.";
       setNotice(message);
     } finally {
       setLoading(false);
@@ -102,9 +119,9 @@ export default function AdminRequestsPage() {
       });
       await loadData(token);
       setRejectReason("");
-      setNotice("승인/배정 완료");
+      setNotice("요청 승인 및 업체 배정이 완료되었습니다.");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "승인 오류";
+      const message = error instanceof Error ? error.message : "승인 처리에 실패했습니다.";
       setNotice(message);
     } finally {
       setLoading(false);
@@ -125,9 +142,9 @@ export default function AdminRequestsPage() {
       });
       await loadData(token);
       setRejectReason("");
-      setNotice("반려 처리 완료");
+      setNotice("요청 반려 처리가 완료되었습니다.");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "반려 오류";
+      const message = error instanceof Error ? error.message : "반려 처리에 실패했습니다.";
       setNotice(message);
     } finally {
       setLoading(false);
@@ -137,11 +154,34 @@ export default function AdminRequestsPage() {
   return (
     <main className={styles.page}>
       <header className={styles.header}>
-        <h1 className={styles.title}>Admin Request Console</h1>
-        <p className={styles.subtitle}>요청 승인/반려/배정을 처리합니다.</p>
+        <h1 className={styles.title}>관리자 작업 화면</h1>
+        <p className={styles.subtitle}>요청 검토, 승인/반려, 업체 배정을 한 화면에서 처리합니다.</p>
       </header>
 
       {notice && <div className={styles.notice}>{notice}</div>}
+
+      <section className={styles.summaryRow}>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>대기</span>
+          <strong>{summary.PENDING}</strong>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>승인</span>
+          <strong>{summary.APPROVED}</strong>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>진행 중</span>
+          <strong>{summary.IN_PROGRESS}</strong>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>완료</span>
+          <strong>{summary.COMPLETED}</strong>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>반려</span>
+          <strong>{summary.REJECTED}</strong>
+        </article>
+      </section>
 
       <section className={styles.grid}>
         <article className={styles.card}>
@@ -161,29 +201,32 @@ export default function AdminRequestsPage() {
                 >
                   <div className={styles.topRow}>
                     <strong>{item.title}</strong>
-                    <span className={styles.status}>{item.status}</span>
+                    <span className={styles.status}>{requestStatusLabel(item.status)}</span>
                   </div>
                   <div className={styles.meta}>
-                    {item.requestType} / {item.team} / {new Date(item.dueDate).toLocaleDateString()}
+                    {requestTypeLabel(item.requestType)} / {item.team} / {new Date(item.dueDate).toLocaleDateString()}
                   </div>
                 </button>
               );
             })}
+            {requests.length === 0 && <p>조회된 요청이 없습니다.</p>}
           </div>
         </article>
 
         <article className={styles.card}>
-          <h2 className={styles.sectionTitle}>처리</h2>
-          {!selected && <p>요청을 선택하세요.</p>}
+          <h2 className={styles.sectionTitle}>처리 패널</h2>
+          {!selected && <p>왼쪽 목록에서 요청을 선택하세요.</p>}
           {selected && (
             <>
               <p>
                 <strong>{selected.title}</strong>
               </p>
               <p>{selected.description ?? "-"}</p>
-              <p>현재 상태: {selected.status}</p>
-              <p>현재 배정업체: {selected.assignedVendor?.name ?? "-"}</p>
+              <p>현재 상태: {requestStatusLabel(selected.status)}</p>
+              <p>요청 유형: {requestTypeLabel(selected.requestType)}</p>
+              <p>배정 업체: {selected.assignedVendor?.name ?? "-"}</p>
               <p>반려 사유: {selected.rejectedReason ?? "-"}</p>
+              {!canProcessSelected && <p className={styles.meta}>대기 상태 요청만 승인/반려 처리할 수 있습니다.</p>}
 
               <div className={styles.field}>
                 <label htmlFor="vendor">배정 업체</label>
@@ -207,7 +250,7 @@ export default function AdminRequestsPage() {
                   id="reject"
                   value={rejectReason}
                   onChange={(event) => setRejectReason(event.target.value)}
-                  placeholder="반려 사유 입력"
+                  placeholder="반려 사유를 입력하세요"
                 />
               </div>
 
@@ -219,15 +262,15 @@ export default function AdminRequestsPage() {
                   className={styles.button}
                   type="button"
                   onClick={approveSelected}
-                  disabled={loading || !selectedVendorId}
+                  disabled={loading || !selectedVendorId || !canProcessSelected}
                 >
-                  승인/배정
+                  승인 및 배정
                 </button>
                 <button
                   className={`${styles.button} ${styles.danger}`}
                   type="button"
                   onClick={rejectSelected}
-                  disabled={loading || !rejectReason.trim()}
+                  disabled={loading || !rejectReason.trim() || !canProcessSelected}
                 >
                   반려
                 </button>

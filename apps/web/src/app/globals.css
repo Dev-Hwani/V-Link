@@ -1,5 +1,14 @@
 :root {
   color-scheme: light;
+  --teams-bg: #eef1f7;
+  --teams-surface: #ffffff;
+  --teams-surface-muted: #f6f8fd;
+  --teams-border: #d7dced;
+  --teams-text: #252b3a;
+  --teams-muted: #5f6880;
+  --teams-primary: #6264a7;
+  --teams-primary-strong: #4f52b2;
+  --teams-shadow: 0 8px 24px rgba(24, 35, 66, 0.08);
 }
 
 * {
@@ -10,7 +19,9 @@ html,
 body {
   margin: 0;
   padding: 0;
-  background: #f4f7fb;
+  background: var(--teams-bg);
+  color: var(--teams-text);
+  font-family: "Segoe UI", "Pretendard", "Noto Sans KR", sans-serif;
 }
 
 a {
@@ -19,66 +30,142 @@ a {
 
 .app-shell {
   min-height: 100vh;
+  display: grid;
+  grid-template-columns: 248px minmax(0, 1fr);
 }
 
-.app-header {
+.app-sidebar {
   position: sticky;
   top: 0;
-  z-index: 20;
+  height: 100vh;
+  padding: 14px;
+  border-right: 1px solid var(--teams-border);
+  background: var(--teams-surface-muted);
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
   gap: 12px;
-  padding: 10px 16px;
-  border-bottom: 1px solid #d8dfea;
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(8px);
 }
 
 .app-brand {
+  display: block;
   text-decoration: none;
-  font-family: "Pretendard", "Noto Sans KR", "Segoe UI", sans-serif;
+  color: #fff;
+  background: linear-gradient(140deg, var(--teams-primary), var(--teams-primary-strong));
+  border-radius: 12px;
+  padding: 12px 14px;
   font-size: 20px;
   font-weight: 700;
 }
 
 .app-nav {
   display: flex;
+  flex-direction: column;
   gap: 10px;
-  flex-wrap: wrap;
 }
 
-.app-nav a {
+.app-nav-group {
+  display: grid;
+  gap: 6px;
+}
+
+.app-nav-link {
+  display: flex;
+  align-items: center;
   text-decoration: none;
-  font-family: "Pretendard", "Noto Sans KR", "Segoe UI", sans-serif;
-  font-size: 13px;
-  border: 1px solid #d0d8e6;
-  border-radius: 999px;
-  padding: 6px 10px;
-  background: #fff;
+  font-size: 14px;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  padding: 9px 12px;
+  background: transparent;
+  color: #2f3749;
+  font-weight: 500;
+}
+
+.app-nav-link:hover {
+  border-color: #d3d9ef;
+  background: #ecf0fb;
+}
+
+.app-nav-link-active {
+  border-color: #c4ccf0;
+  background: #e7ebfa;
+  color: #31398f;
+  font-weight: 700;
 }
 
 .app-nav-button {
-  font-family: "Pretendard", "Noto Sans KR", "Segoe UI", sans-serif;
+  margin-top: auto;
   font-size: 13px;
-  border: 1px solid #d0d8e6;
-  border-radius: 999px;
-  padding: 6px 10px;
+  border: 1px solid #e5c5ca;
+  border-radius: 10px;
+  padding: 10px 12px;
   background: #fff;
+  color: #8d2f2f;
   cursor: pointer;
+  width: 100%;
+}
+
+.app-user-card {
+  border: 1px solid var(--teams-border);
+  border-radius: 10px;
+  background: var(--teams-surface);
+  padding: 10px 12px;
+  display: grid;
+  gap: 3px;
+}
+
+.app-nav-meta-role {
+  font-size: 12px;
+  color: var(--teams-muted);
+  font-weight: 600;
+}
+
+.app-nav-meta-email {
+  font-size: 13px;
+  color: var(--teams-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.app-main {
+  min-width: 0;
 }
 
 .app-content {
-  padding: 0;
+  padding: 22px;
 }
 
-@media (max-width: 640px) {
-  .app-header {
-    flex-direction: column;
-    align-items: stretch;
+@media (max-width: 960px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .app-sidebar {
+    position: static;
+    height: auto;
+    border-right: 0;
+    border-bottom: 1px solid var(--teams-border);
   }
 
   .app-nav {
-    justify-content: center;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .app-user-card {
+    min-width: 180px;
+  }
+
+  .app-nav-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .app-nav-button {
+    width: auto;
+    margin-top: 0;
   }
 }

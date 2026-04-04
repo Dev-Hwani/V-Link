@@ -19,13 +19,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="ko">
       <body>
         <div className="app-shell">
-          <header className="app-header">
+          <aside className="app-sidebar">
             <a className="app-brand" href="/">
               V-Link
             </a>
             <AppNav />
-          </header>
-          <div className="app-content">{children}</div>
+          </aside>
+          <main className="app-main">
+            <div className="app-content">{children}</div>
+          </main>
         </div>
       </body>
     </html>

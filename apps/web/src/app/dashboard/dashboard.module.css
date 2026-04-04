@@ -1,12 +1,9 @@
-.page {
-  min-height: calc(100vh - 64px);
+﻿.page {
+  min-height: 100%;
   padding: 20px;
-  background:
-    radial-gradient(circle at 8% 12%, #e4f5ff 0, transparent 42%),
-    radial-gradient(circle at 90% 86%, #e7ffe9 0, transparent 32%),
-    #f6f8fc;
-  font-family: "Pretendard", "Noto Sans KR", "Segoe UI", sans-serif;
-  color: #1f2430;
+  background: var(--teams-bg);
+  font-family: "Segoe UI", "Pretendard", "Noto Sans KR", sans-serif;
+  color: var(--teams-text);
 }
 
 .header {
@@ -21,15 +18,15 @@
 
 .subtitle {
   margin-top: 8px;
-  color: #586173;
+  color: var(--teams-muted);
 }
 
 .card {
-  border: 1px solid #d8dfea;
-  border-radius: 14px;
-  background: #fff;
+  border: 1px solid var(--teams-border);
+  border-radius: 12px;
+  background: var(--teams-surface);
   padding: 14px;
-  box-shadow: 0 8px 20px rgba(24, 38, 64, 0.06);
+  box-shadow: var(--teams-shadow);
 }
 
 .grid {
@@ -52,7 +49,7 @@
 }
 
 .statusCard {
-  border: 1px solid #d6ddea;
+  border: 1px solid var(--teams-border);
   border-radius: 10px;
   padding: 10px;
 }
@@ -60,7 +57,7 @@
 .statusLabel {
   margin: 0;
   font-size: 12px;
-  color: #5a6374;
+  color: var(--teams-muted);
 }
 
 .statusValue {
@@ -82,21 +79,27 @@
 
 .field label {
   font-size: 12px;
-  color: #5a6374;
+  color: var(--teams-muted);
 }
 
 .field input {
   border: 1px solid #c8cfdd;
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 9px 10px;
   font-size: 14px;
 }
 
+.field input:focus {
+  outline: none;
+  border-color: var(--teams-primary);
+  box-shadow: 0 0 0 3px rgba(98, 100, 167, 0.18);
+}
+
 .button {
   border: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 10px 12px;
-  background: #2b69dd;
+  background: var(--teams-primary);
   color: #fff;
   font-size: 14px;
   font-weight: 600;
@@ -110,10 +113,10 @@
 
 .notice {
   margin-bottom: 10px;
-  border: 1px solid #ffd9a5;
-  border-radius: 10px;
-  background: #fff2dc;
-  color: #7a4a00;
+  border: 1px solid #f0c9ce;
+  border-radius: 8px;
+  background: #fff4f5;
+  color: #8a2f3d;
   font-size: 13px;
   padding: 8px 10px;
 }
@@ -140,7 +143,7 @@
 
 .barFill {
   height: 100%;
-  background: linear-gradient(90deg, #2d73dd, #5a8fe8);
+  background: linear-gradient(90deg, var(--teams-primary), #7a7dd1);
 }
 
 .vendorList {
@@ -149,7 +152,7 @@
 }
 
 .vendorCard {
-  border: 1px solid #dbe1ed;
+  border: 1px solid var(--teams-border);
   border-radius: 10px;
   padding: 10px;
   font-size: 13px;
@@ -177,4 +180,3 @@
     grid-template-columns: 76px 1fr 36px;
   }
 }
-

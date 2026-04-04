@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";
@@ -9,7 +9,8 @@ import { useRouter } from "next/navigation";
 
 import styles from "./calendar.module.css";
 import { apiJson } from "../../lib/api";
-import { getRoleHome, getSession } from "../../lib/session";
+import { requestStatusLabel, requestTypeLabel } from "../../lib/display";
+import { getSession } from "../../lib/session";
 
 type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "IN_PROGRESS" | "COMPLETED";
 
@@ -89,7 +90,7 @@ export default function CalendarPage() {
       const data = await apiJson<VendorOption[]>("/calendar/vendors", currentToken, { method: "GET" });
       setVendors(data);
     } catch (error) {
-      const message = error instanceof Error ? error.message : "업체 목록 조회 오류";
+      const message = error instanceof Error ? error.message : "업체 목록 조회에 실패했습니다.";
       setNotice(message);
     }
   }
@@ -111,8 +112,9 @@ export default function CalendarPage() {
         method: "GET",
       });
       setEvents(data);
+      setNotice("");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "캘린더 조회 오류";
+      const message = error instanceof Error ? error.message : "캘린더 조회에 실패했습니다.";
       setNotice(message);
     } finally {
       setLoading(false);
@@ -153,8 +155,8 @@ export default function CalendarPage() {
   return (
     <main className={styles.page}>
       <header className={styles.header}>
-        <h1 className={styles.title}>VAS Calendar</h1>
-        <p className={styles.subtitle}>업체/일자/상태 필터로 작업 일정을 확인합니다.</p>
+        <h1 className={styles.title}>VAS 캘린더</h1>
+        <p className={styles.subtitle}>업체, 기간, 상태 필터로 요청 일정을 빠르게 확인합니다.</p>
       </header>
 
       <section className={styles.topGrid}>
@@ -162,17 +164,17 @@ export default function CalendarPage() {
           {notice && <div className={styles.notice}>{notice}</div>}
           <div className={styles.filters}>
             <div className={styles.field}>
-              <label htmlFor="from">From</label>
+              <label htmlFor="from">시작일</label>
               <input id="from" type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
             </div>
             <div className={styles.field}>
-              <label htmlFor="to">To</label>
+              <label htmlFor="to">종료일</label>
               <input id="to" type="date" value={to} onChange={(event) => setTo(event.target.value)} />
             </div>
             <div className={styles.field}>
-              <label htmlFor="vendor">Vendor</label>
+              <label htmlFor="vendor">업체</label>
               <select id="vendor" value={vendorId} onChange={(event) => setVendorId(event.target.value)}>
-                <option value="">All</option>
+                <option value="">전체</option>
                 {vendors.map((vendor) => (
                   <option key={vendor.id} value={vendor.id}>
                     {vendor.name}
@@ -181,27 +183,40 @@ export default function CalendarPage() {
               </select>
             </div>
             <div className={styles.field}>
-              <label htmlFor="status">Status</label>
+              <label htmlFor="status">상태</label>
               <select id="status" value={status} onChange={(event) => setStatus(event.target.value as RequestStatus | "")}>
-                <option value="">All</option>
-                <option value="PENDING">PENDING</option>
-                <option value="APPROVED">APPROVED</option>
-                <option value="IN_PROGRESS">IN_PROGRESS</option>
-                <option value="COMPLETED">COMPLETED</option>
-                <option value="REJECTED">REJECTED</option>
+                <option value="">전체</option>
+                <option value="PENDING">{requestStatusLabel("PENDING")}</option>
+                <option value="APPROVED">{requestStatusLabel("APPROVED")}</option>
+                <option value="IN_PROGRESS">{requestStatusLabel("IN_PROGRESS")}</option>
+                <option value="COMPLETED">{requestStatusLabel("COMPLETED")}</option>
+                <option value="REJECTED">{requestStatusLabel("REJECTED")}</option>
               </select>
             </div>
           </div>
+          <div className={styles.actions}>
+            <button
+              className={styles.button}
+              type="button"
+              onClick={() => {
+                setVendorId("");
+                setStatus("");
+              }}
+            >
+              필터 초기화
+            </button>
+          </div>
+          {loading && <p className={styles.selectedItem}>일정 불러오는 중...</p>}
         </div>
         <aside className={styles.card}>
           <h2 className={styles.selectedTitle}>선택 일정</h2>
-          {!selectedEvent && <p className={styles.selectedItem}>일정을 클릭하면 상세를 확인할 수 있습니다.</p>}
+          {!selectedEvent && <p className={styles.selectedItem}>캘린더 일정을 클릭하면 상세 정보가 표시됩니다.</p>}
           {selectedEvent && (
             <div className={styles.selected}>
               <p className={styles.selectedItem}>{selectedEvent.title}</p>
-              <p className={styles.selectedItem}>일자: {selectedEvent.start}</p>
-              <p className={styles.selectedItem}>상태: {selectedEvent.status || "-"}</p>
-              <p className={styles.selectedItem}>유형: {selectedEvent.requestType || "-"}</p>
+              <p className={styles.selectedItem}>일시: {selectedEvent.start}</p>
+              <p className={styles.selectedItem}>상태: {selectedEvent.status ? requestStatusLabel(selectedEvent.status) : "-"}</p>
+              <p className={styles.selectedItem}>유형: {selectedEvent.requestType ? requestTypeLabel(selectedEvent.requestType) : "-"}</p>
               <p className={styles.selectedItem}>팀: {selectedEvent.team || "-"}</p>
               <p className={styles.selectedItem}>업체: {selectedEvent.vendorName}</p>
               <p className={styles.selectedItem}>요청자: {selectedEvent.requesterName}</p>

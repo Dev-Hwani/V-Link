@@ -1,7 +1,8 @@
-.page {
-  min-height: calc(100vh - 64px);
+﻿.page {
+  min-height: 100%;
   padding: 18px;
-  font-family: "Pretendard", "Noto Sans KR", "Segoe UI", sans-serif;
+  background: var(--teams-bg);
+  font-family: "Segoe UI", "Pretendard", "Noto Sans KR", sans-serif;
 }
 
 .header {
@@ -15,17 +16,38 @@
 
 .subtitle {
   margin-top: 6px;
-  color: #5d6678;
+  color: var(--teams-muted);
 }
 
 .notice {
   margin-bottom: 10px;
-  border: 1px solid #ffd7a8;
-  border-radius: 10px;
-  background: #fff2dd;
-  color: #7a4700;
+  border: 1px solid #f0c9ce;
+  border-radius: 8px;
+  background: #fff4f5;
+  color: #8a2f3d;
   padding: 8px 10px;
   font-size: 13px;
+}
+
+.summaryRow {
+  margin-bottom: 12px;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  gap: 10px;
+}
+
+.summaryCard {
+  border: 1px solid var(--teams-border);
+  border-radius: 10px;
+  background: var(--teams-surface);
+  padding: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.summaryLabel {
+  font-size: 12px;
+  color: var(--teams-muted);
 }
 
 .grid {
@@ -35,11 +57,11 @@
 }
 
 .card {
-  border: 1px solid #d8dfea;
+  border: 1px solid var(--teams-border);
   border-radius: 12px;
-  background: #fff;
+  background: var(--teams-surface);
   padding: 12px;
-  box-shadow: 0 8px 20px rgba(20, 35, 58, 0.06);
+  box-shadow: var(--teams-shadow);
 }
 
 .sectionTitle {
@@ -54,16 +76,25 @@
 
 .field label {
   font-size: 13px;
-  color: #5d6678;
+  color: var(--teams-muted);
 }
 
 .field input,
 .field textarea,
 .field select {
   border: 1px solid #c8cfdd;
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 9px 10px;
   font-size: 14px;
+  background: #fff;
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--teams-primary);
+  box-shadow: 0 0 0 3px rgba(98, 100, 167, 0.18);
 }
 
 .field textarea {
@@ -79,12 +110,12 @@
 
 .button {
   border: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 10px 12px;
   font-size: 14px;
   font-weight: 600;
   color: #fff;
-  background: #2f6ddd;
+  background: var(--teams-primary);
   cursor: pointer;
 }
 
@@ -99,20 +130,24 @@
 }
 
 .item {
-  border: 1px solid #d8dfea;
+  border: 1px solid var(--teams-border);
   border-radius: 10px;
   padding: 10px;
+  background: #fff;
 }
 
 .meta {
   margin-top: 6px;
-  color: #5d6678;
+  color: var(--teams-muted);
   font-size: 13px;
 }
 
 @media (max-width: 960px) {
+  .summaryRow {
+    grid-template-columns: repeat(2, minmax(120px, 1fr));
+  }
+
   .grid {
     grid-template-columns: 1fr;
   }
 }
-

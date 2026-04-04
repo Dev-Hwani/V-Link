@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -48,14 +48,14 @@ export default function SignupPage() {
 
       if (!response.ok) {
         const text = await response.text();
-        throw new Error(text || "Signup failed");
+        throw new Error(text || "회원가입에 실패했습니다.");
       }
 
       const data = (await response.json()) as SessionData;
       setSession(data);
       router.push(getRoleHome(data.user.role));
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Signup error";
+      const message = error instanceof Error ? error.message : "회원가입 중 오류가 발생했습니다.";
       setNotice(message);
     } finally {
       setLoading(false);
@@ -65,20 +65,34 @@ export default function SignupPage() {
   return (
     <main className={styles.page}>
       <section className={styles.card}>
-        <h1 className={styles.title}>Create Requester Account</h1>
-        <p className={styles.subtitle}>Public signup creates a REQUESTER account.</p>
+        <h1 className={styles.title}>V-Link 회원가입</h1>
+        <p className={styles.subtitle}>역할을 선택해 계정을 만들고, 가입 즉시 자동 로그인됩니다.</p>
 
         <form className={styles.form} onSubmit={onSubmit}>
           <div className={styles.field}>
-            <label htmlFor="name">Name</label>
-            <input id="name" value={name} onChange={(event) => setName(event.target.value)} required minLength={2} />
+            <label htmlFor="name">이름</label>
+            <input
+              id="name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="이름 입력"
+              required
+              minLength={2}
+            />
           </div>
           <div className={styles.field}>
-            <label htmlFor="email">Email</label>
-            <input id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required />
+            <label htmlFor="email">이메일</label>
+            <input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="name@company.com"
+              required
+            />
           </div>
           <div className={styles.field}>
-            <label htmlFor="password">Password</label>
+            <label htmlFor="password">비밀번호</label>
             <input
               id="password"
               type="password"
@@ -86,33 +100,40 @@ export default function SignupPage() {
               onChange={(event) => setPassword(event.target.value)}
               required
               minLength={8}
+              placeholder="8자 이상 입력"
             />
           </div>
           <div className={styles.field}>
-            <label htmlFor="role">Role</label>
-            <select id="role" value={role} onChange={(event) => setRole(event.target.value as "REQUESTER" | "VENDOR" | "ADMIN")}>
-              <option value="REQUESTER">REQUESTER</option>
-              <option value="VENDOR">VENDOR</option>
-              <option value="ADMIN">ADMIN</option>
+            <label htmlFor="role">역할</label>
+            <select
+              id="role"
+              value={role}
+              onChange={(event) => setRole(event.target.value as "REQUESTER" | "VENDOR" | "ADMIN")}
+            >
+              <option value="REQUESTER">요청자 (REQUESTER)</option>
+              <option value="VENDOR">업체 (VENDOR)</option>
+              <option value="ADMIN">관리자 (ADMIN)</option>
             </select>
           </div>
           {role === "VENDOR" && (
             <>
               <div className={styles.field}>
-                <label htmlFor="vendorCode">Vendor Code</label>
+                <label htmlFor="vendorCode">업체 코드</label>
                 <input
                   id="vendorCode"
                   value={vendorCode}
                   onChange={(event) => setVendorCode(event.target.value)}
+                  placeholder="예: VENDOR-001"
                   required
                 />
               </div>
               <div className={styles.field}>
-                <label htmlFor="vendorName">Vendor Name</label>
+                <label htmlFor="vendorName">업체명</label>
                 <input
                   id="vendorName"
                   value={vendorName}
                   onChange={(event) => setVendorName(event.target.value)}
+                  placeholder="예: ABC Logistics"
                   required
                 />
               </div>
@@ -120,24 +141,25 @@ export default function SignupPage() {
           )}
           {role === "ADMIN" && (
             <div className={styles.field}>
-              <label htmlFor="adminCode">Admin Signup Code</label>
+              <label htmlFor="adminCode">관리자 가입 코드</label>
               <input
                 id="adminCode"
                 value={adminSignupCode}
                 onChange={(event) => setAdminSignupCode(event.target.value)}
+                placeholder="관리자 코드 입력"
                 required
               />
             </div>
           )}
           <button className={styles.button} type="submit" disabled={loading}>
-            {loading ? "Signing up..." : "Sign up"}
+            {loading ? "가입 중..." : "회원가입"}
           </button>
         </form>
 
         {notice && <div className={styles.notice}>{notice}</div>}
 
         <div className={styles.linkRow}>
-          Already have an account? <a href="/login">Login</a>
+          이미 계정이 있나요? <a href="/login">로그인</a>
         </div>
       </section>
     </main>

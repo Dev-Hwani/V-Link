@@ -1,10 +1,11 @@
-"use client";
+﻿"use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "./requester.module.css";
 import { API_BASE, apiJson } from "../../lib/api";
+import { requestStatusLabel, requestTypeLabel } from "../../lib/display";
 import { getRoleHome, getSession } from "../../lib/session";
 
 type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "IN_PROGRESS" | "COMPLETED";
@@ -33,6 +34,21 @@ export default function RequesterPage() {
   const [dueDate, setDueDate] = useState("");
   const [description, setDescription] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const summary = useMemo(() => {
+    const base = {
+      PENDING: 0,
+      APPROVED: 0,
+      REJECTED: 0,
+      IN_PROGRESS: 0,
+      COMPLETED: 0,
+    };
+
+    requests.forEach((item) => {
+      base[item.status] += 1;
+    });
+
+    return base;
+  }, [requests]);
 
   useEffect(() => {
     const session = getSession();
@@ -65,7 +81,7 @@ export default function RequesterPage() {
         setSelectedId(data[0].id);
       }
     } catch (error) {
-      const message = error instanceof Error ? error.message : "요청 목록 조회 오류";
+      const message = error instanceof Error ? error.message : "요청 목록 조회에 실패했습니다.";
       setNotice(message);
     } finally {
       setLoading(false);
@@ -108,7 +124,7 @@ export default function RequesterPage() {
 
         if (!uploadResponse.ok) {
           const text = await uploadResponse.text();
-          throw new Error(text || "첨부 업로드 실패");
+          throw new Error(text || "첨부 업로드에 실패했습니다.");
         }
       }
 
@@ -117,9 +133,9 @@ export default function RequesterPage() {
       setTitle("");
       setDescription("");
       setFile(null);
-      setNotice("요청 생성 완료");
+      setNotice("요청이 등록되었습니다.");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "요청 생성 오류";
+      const message = error instanceof Error ? error.message : "요청 등록에 실패했습니다.";
       setNotice(message);
     } finally {
       setLoading(false);
@@ -129,18 +145,41 @@ export default function RequesterPage() {
   return (
     <main className={styles.page}>
       <header className={styles.header}>
-        <h1 className={styles.title}>Requester Console</h1>
-        <p className={styles.subtitle}>요청 생성, 첨부 업로드, 요청 상태 확인이 가능합니다.</p>
+        <h1 className={styles.title}>요청자 작업 화면</h1>
+        <p className={styles.subtitle}>요청 등록, 첨부 업로드, 진행 상태 확인을 한 번에 처리합니다.</p>
       </header>
 
       {notice && <div className={styles.notice}>{notice}</div>}
 
+      <section className={styles.summaryRow}>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>대기</span>
+          <strong>{summary.PENDING}</strong>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>승인</span>
+          <strong>{summary.APPROVED}</strong>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>진행 중</span>
+          <strong>{summary.IN_PROGRESS}</strong>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>완료</span>
+          <strong>{summary.COMPLETED}</strong>
+        </article>
+        <article className={styles.summaryCard}>
+          <span className={styles.summaryLabel}>반려</span>
+          <strong>{summary.REJECTED}</strong>
+        </article>
+      </section>
+
       <section className={styles.grid}>
         <article className={styles.card}>
-          <h2 className={styles.sectionTitle}>요청 생성</h2>
+          <h2 className={styles.sectionTitle}>요청 등록</h2>
           <form onSubmit={createRequest}>
             <div className={styles.field}>
-              <label htmlFor="type">작업 종류</label>
+              <label htmlFor="type">요청 유형</label>
               <input id="type" value={requestType} onChange={(event) => setRequestType(event.target.value)} required />
             </div>
             <div className={styles.field}>
@@ -148,15 +187,15 @@ export default function RequesterPage() {
               <input id="title" value={title} onChange={(event) => setTitle(event.target.value)} required />
             </div>
             <div className={styles.field}>
-              <label htmlFor="team">팀</label>
+              <label htmlFor="team">담당 팀</label>
               <input id="team" value={team} onChange={(event) => setTeam(event.target.value)} required />
             </div>
             <div className={styles.field}>
-              <label htmlFor="dueDate">납기</label>
+              <label htmlFor="dueDate">마감일</label>
               <input id="dueDate" type="date" value={dueDate} onChange={(event) => setDueDate(event.target.value)} required />
             </div>
             <div className={styles.field}>
-              <label htmlFor="desc">상세 내용</label>
+              <label htmlFor="desc">상세 설명</label>
               <textarea id="desc" value={description} onChange={(event) => setDescription(event.target.value)} />
             </div>
             <div className={styles.field}>
@@ -182,7 +221,7 @@ export default function RequesterPage() {
           <h2 className={styles.sectionTitle}>내 요청 목록</h2>
           <div className={styles.actions}>
             <button className={styles.button} type="button" onClick={() => void loadRequests(token)} disabled={loading}>
-              새로고침
+              목록 새로고침
             </button>
           </div>
           <div className={styles.list}>
@@ -198,12 +237,13 @@ export default function RequesterPage() {
               >
                 <strong>{item.title}</strong>
                 <div className={styles.meta}>
-                  {item.status} / {item.requestType} / {item.team} / {new Date(item.dueDate).toLocaleDateString()}
+                  {requestStatusLabel(item.status)} / {requestTypeLabel(item.requestType)} / {item.team} /{" "}
+                  {new Date(item.dueDate).toLocaleDateString()}
                 </div>
                 <div className={styles.meta}>{item.description ?? "-"}</div>
               </div>
             ))}
-            {requests.length === 0 && <p>요청이 없습니다.</p>}
+            {requests.length === 0 && <p>등록된 요청이 없습니다.</p>}
           </div>
         </article>
       </section>

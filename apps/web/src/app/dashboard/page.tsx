@@ -1,10 +1,11 @@
-"use client";
+﻿"use client";
 
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "./dashboard.module.css";
 import { apiJson } from "../../lib/api";
+import { requestStatusLabel, sapStatusLabel } from "../../lib/display";
 import { getRoleHome, getSession } from "../../lib/session";
 
 type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "IN_PROGRESS" | "COMPLETED";
@@ -84,7 +85,7 @@ export default function DashboardPage() {
       setSummary(data);
       setNotice("");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "대시보드 조회 오류";
+      const message = error instanceof Error ? error.message : "대시보드 조회에 실패했습니다.";
       setNotice(message);
     } finally {
       setLoading(false);
@@ -96,8 +97,8 @@ export default function DashboardPage() {
   return (
     <main className={styles.page}>
       <header className={styles.header}>
-        <h1 className={styles.title}>Dashboard</h1>
-        <p className={styles.subtitle}>요청/업체/SAP 통계를 운영 관점으로 확인합니다.</p>
+        <h1 className={styles.title}>대시보드</h1>
+        <p className={styles.subtitle}>요청량, 업체 작업량, SAP 잡 상태를 한 번에 확인합니다.</p>
       </header>
 
       <section className={styles.grid}>
@@ -105,11 +106,11 @@ export default function DashboardPage() {
           {notice && <div className={styles.notice}>{notice}</div>}
           <div className={styles.fieldRow}>
             <div className={styles.field}>
-              <label htmlFor="from">From</label>
+              <label htmlFor="from">시작일</label>
               <input id="from" type="date" value={from} onChange={(event) => setFrom(event.target.value)} />
             </div>
             <div className={styles.field}>
-              <label htmlFor="to">To</label>
+              <label htmlFor="to">종료일</label>
               <input id="to" type="date" value={to} onChange={(event) => setTo(event.target.value)} />
             </div>
           </div>
@@ -122,7 +123,7 @@ export default function DashboardPage() {
                 void loadSummary(token, from, to);
               }}
             >
-              통계 새로고침
+              {loading ? "불러오는 중..." : "통계 새로고침"}
             </button>
           </div>
         </article>
@@ -134,7 +135,7 @@ export default function DashboardPage() {
               <div className={styles.statusCards}>
                 {Object.entries(summary.requestStatus).map(([key, value]) => (
                   <div key={key} className={styles.statusCard}>
-                    <p className={styles.statusLabel}>{key}</p>
+                    <p className={styles.statusLabel}>{requestStatusLabel(key)}</p>
                     <p className={styles.statusValue}>{value}</p>
                   </div>
                 ))}
@@ -162,7 +163,7 @@ export default function DashboardPage() {
                 <div className={styles.statusCards}>
                   {Object.entries(summary.sapStatus).map(([key, value]) => (
                     <div key={key} className={styles.statusCard}>
-                      <p className={styles.statusLabel}>{key}</p>
+                      <p className={styles.statusLabel}>{sapStatusLabel(key)}</p>
                       <p className={styles.statusValue}>{value}</p>
                     </div>
                   ))}
@@ -171,20 +172,20 @@ export default function DashboardPage() {
             </section>
 
             <article className={styles.card}>
-              <h2>업체별 작업량</h2>
+              <h2>업체 작업량</h2>
               <div className={styles.vendorList}>
                 {summary.vendorWorkload.map((vendor) => (
                   <div key={vendor.vendorId} className={styles.vendorCard}>
                     <strong>
                       {vendor.vendorName} ({vendor.vendorCode})
                     </strong>
-                    <span>Total: {vendor.total}</span>
-                    <span>Pending: {vendor.pending}</span>
-                    <span>In Progress: {vendor.inProgress}</span>
-                    <span>Completed: {vendor.completed}</span>
+                    <span>전체: {vendor.total}</span>
+                    <span>대기: {vendor.pending}</span>
+                    <span>진행 중: {vendor.inProgress}</span>
+                    <span>완료: {vendor.completed}</span>
                   </div>
                 ))}
-                {summary.vendorWorkload.length === 0 && <p>데이터가 없습니다.</p>}
+                {summary.vendorWorkload.length === 0 && <p>집계 데이터가 없습니다.</p>}
               </div>
             </article>
           </>

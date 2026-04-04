@@ -58,6 +58,16 @@ a {
   background: #fff;
 }
 
+.app-nav-button {
+  font-family: "Pretendard", "Noto Sans KR", "Segoe UI", sans-serif;
+  font-size: 13px;
+  border: 1px solid #d0d8e6;
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: #fff;
+  cursor: pointer;
+}
+
 .app-content {
   padding: 0;
 }

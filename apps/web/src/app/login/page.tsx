@@ -1,11 +1,11 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "./login.module.css";
 import { API_BASE } from "../../lib/api";
-import { getRoleHome, setSession, type SessionData } from "../../lib/session";
+import { getRoleHome, getSession, setSession, type SessionData } from "../../lib/session";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -13,6 +13,13 @@ export default function LoginPage() {
   const [password, setPassword] = useState("admin1234");
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    const session = getSession();
+    if (session) {
+      router.replace(getRoleHome(session.user.role));
+    }
+  }, [router]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -77,4 +84,3 @@ export default function LoginPage() {
     </main>
   );
 }
-

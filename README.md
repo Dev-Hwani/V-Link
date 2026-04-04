@@ -10,7 +10,7 @@ Monorepo scaffold for V-Link VAS workflow.
 ## Backend implemented (phase 1)
 
 - JWT auth (`/auth/login`, `/auth/register`)
-- Public requester signup (`/auth/signup`)
+- Public signup (`/auth/signup`) with role selection
 - RBAC roles: `ADMIN`, `REQUESTER`, `VENDOR`
 - VAS request workflow endpoints
   - `POST /requests`
@@ -87,7 +87,7 @@ Default ports:
 Login entry:
 
 - `http://localhost:3000/login`
-- `http://localhost:3000/signup` (public requester signup)
+- `http://localhost:3000/signup` (select `REQUESTER` / `VENDOR` / `ADMIN`)
 - One login redirects by role:
   - `ADMIN` -> `/admin/requests`
   - `REQUESTER` -> `/requester`
@@ -122,6 +122,7 @@ Login entry:
 - OAuth client credentials: `SAP_ODATA_TOKEN_URL`, `SAP_ODATA_CLIENT_ID`, `SAP_ODATA_CLIENT_SECRET`, `SAP_ODATA_SCOPE`
 - Mapping: `SAP_COMPANY_CODE`, `SAP_PLANT_CODE`, `SAP_STORAGE_LOCATION`, `SAP_CURRENCY`, `SAP_PRE_ORDER_TYPE`, `SAP_POST_ORDER_TYPE`, `SAP_REQUEST_TYPE_MAP_JSON`
 - Error policy override: `SAP_RETRYABLE_CODES`, `SAP_NON_RETRYABLE_CODES`
+- Admin signup gate: `ADMIN_SIGNUP_CODE` (required when role is `ADMIN` at signup)
 
 ## Notification env
 

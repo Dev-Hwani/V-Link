@@ -1,19 +1,30 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "./signup.module.css";
 import { API_BASE } from "../../lib/api";
-import { getRoleHome, setSession, type SessionData } from "../../lib/session";
+import { getRoleHome, getSession, setSession, type SessionData } from "../../lib/session";
 
 export default function SignupPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [role, setRole] = useState<"REQUESTER" | "VENDOR" | "ADMIN">("REQUESTER");
+  const [vendorCode, setVendorCode] = useState("");
+  const [vendorName, setVendorName] = useState("");
+  const [adminSignupCode, setAdminSignupCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    const session = getSession();
+    if (session) {
+      router.replace(getRoleHome(session.user.role));
+    }
+  }, [router]);
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -24,7 +35,15 @@ export default function SignupPage() {
       const response = await fetch(`${API_BASE}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          role,
+          vendorCode: role === "VENDOR" ? vendorCode : undefined,
+          vendorName: role === "VENDOR" ? vendorName : undefined,
+          adminSignupCode: role === "ADMIN" ? adminSignupCode : undefined,
+        }),
       });
 
       if (!response.ok) {
@@ -69,6 +88,47 @@ export default function SignupPage() {
               minLength={8}
             />
           </div>
+          <div className={styles.field}>
+            <label htmlFor="role">Role</label>
+            <select id="role" value={role} onChange={(event) => setRole(event.target.value as "REQUESTER" | "VENDOR" | "ADMIN")}>
+              <option value="REQUESTER">REQUESTER</option>
+              <option value="VENDOR">VENDOR</option>
+              <option value="ADMIN">ADMIN</option>
+            </select>
+          </div>
+          {role === "VENDOR" && (
+            <>
+              <div className={styles.field}>
+                <label htmlFor="vendorCode">Vendor Code</label>
+                <input
+                  id="vendorCode"
+                  value={vendorCode}
+                  onChange={(event) => setVendorCode(event.target.value)}
+                  required
+                />
+              </div>
+              <div className={styles.field}>
+                <label htmlFor="vendorName">Vendor Name</label>
+                <input
+                  id="vendorName"
+                  value={vendorName}
+                  onChange={(event) => setVendorName(event.target.value)}
+                  required
+                />
+              </div>
+            </>
+          )}
+          {role === "ADMIN" && (
+            <div className={styles.field}>
+              <label htmlFor="adminCode">Admin Signup Code</label>
+              <input
+                id="adminCode"
+                value={adminSignupCode}
+                onChange={(event) => setAdminSignupCode(event.target.value)}
+                required
+              />
+            </div>
+          )}
           <button className={styles.button} type="submit" disabled={loading}>
             {loading ? "Signing up..." : "Sign up"}
           </button>
@@ -83,4 +143,3 @@ export default function SignupPage() {
     </main>
   );
 }
-

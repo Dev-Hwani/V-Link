@@ -1,4 +1,5 @@
 import { ConflictException, ForbiddenException, Injectable, UnauthorizedException } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
 import { JwtService } from "@nestjs/jwt";
 import { Role } from "@prisma/client";
 import * as bcrypt from "bcrypt";
@@ -14,6 +15,7 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {}
 
   async login(dto: LoginDto) {
@@ -43,14 +45,42 @@ export class AuthService {
       throw new ConflictException("Email already exists");
     }
 
+    if (dto.role === Role.ADMIN) {
+      const expectedCode = this.configService.get<string>("ADMIN_SIGNUP_CODE");
+      if (!expectedCode || dto.adminSignupCode !== expectedCode) {
+        throw new ForbiddenException("Invalid admin signup code");
+      }
+    }
+
+    let vendorId: string | null = null;
+    if (dto.role === Role.VENDOR) {
+      if (!dto.vendorCode) {
+        throw new ConflictException("vendorCode is required for vendor signup");
+      }
+
+      const vendor = await this.prisma.vendor.upsert({
+        where: { code: dto.vendorCode },
+        create: {
+          code: dto.vendorCode,
+          name: dto.vendorName?.trim() || dto.vendorCode,
+        },
+        update: dto.vendorName?.trim()
+          ? {
+              name: dto.vendorName.trim(),
+            }
+          : {},
+      });
+      vendorId = vendor.id;
+    }
+
     const passwordHash = await bcrypt.hash(dto.password, 10);
     const created = await this.prisma.user.create({
       data: {
         email: dto.email,
         passwordHash,
         name: dto.name,
-        role: Role.REQUESTER,
-        vendorId: null,
+        role: dto.role,
+        vendorId,
       },
     });
 
@@ -58,7 +88,7 @@ export class AuthService {
       sub: created.id,
       email: created.email,
       role: created.role,
-      vendorId: null,
+      vendorId: created.vendorId ?? null,
     });
   }
 

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import styles from "./dashboard.module.css";
 import { apiJson } from "../../lib/api";
-import { clearSession, getRoleHome, getSession } from "../../lib/session";
+import { getRoleHome, getSession } from "../../lib/session";
 
 type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "IN_PROGRESS" | "COMPLETED";
 type SapStatus = "PENDING" | "SUCCESS" | "FAILED";
@@ -93,11 +93,6 @@ export default function DashboardPage() {
 
   const maxTrend = Math.max(...(summary?.monthlyTrend.map((item) => item.count) ?? [1]));
 
-  function logout() {
-    clearSession();
-    router.replace("/login");
-  }
-
   return (
     <main className={styles.page}>
       <header className={styles.header}>
@@ -128,9 +123,6 @@ export default function DashboardPage() {
               }}
             >
               통계 새로고침
-            </button>
-            <button className={styles.button} type="button" onClick={logout}>
-              로그아웃
             </button>
           </div>
         </article>
@@ -201,4 +193,3 @@ export default function DashboardPage() {
     </main>
   );
 }
-

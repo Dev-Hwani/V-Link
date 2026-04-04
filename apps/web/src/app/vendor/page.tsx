@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import styles from "./vendor.module.css";
 import { apiJson } from "../../lib/api";
-import { clearSession, getRoleHome, getSession } from "../../lib/session";
+import { getRoleHome, getSession } from "../../lib/session";
 
 type RequestStatus = "PENDING" | "APPROVED" | "IN_PROGRESS" | "COMPLETED" | "REJECTED";
 
@@ -155,11 +155,6 @@ export default function VendorPage() {
     }
   }
 
-  function logout() {
-    clearSession();
-    router.replace("/login");
-  }
-
   return (
     <main className={styles.page}>
       <header className={styles.header}>
@@ -258,9 +253,6 @@ export default function VendorPage() {
                   >
                     완료 처리
                   </button>
-                  <button className={styles.button} type="button" onClick={logout}>
-                    로그아웃
-                  </button>
                 </div>
 
                 <h3 className={styles.sectionTitle} style={{ marginTop: "16px" }}>
@@ -282,4 +274,3 @@ export default function VendorPage() {
     </main>
   );
 }
-

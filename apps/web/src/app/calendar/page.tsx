@@ -9,7 +9,7 @@ import { useRouter } from "next/navigation";
 
 import styles from "./calendar.module.css";
 import { apiJson } from "../../lib/api";
-import { clearSession, getRoleHome, getSession } from "../../lib/session";
+import { getRoleHome, getSession } from "../../lib/session";
 
 type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "IN_PROGRESS" | "COMPLETED";
 
@@ -150,11 +150,6 @@ export default function CalendarPage() {
     });
   }
 
-  function logout() {
-    clearSession();
-    router.replace("/login");
-  }
-
   return (
     <main className={styles.page}>
       <header className={styles.header}>
@@ -213,9 +208,6 @@ export default function CalendarPage() {
               <p className={styles.selectedItem}>설명: {selectedEvent.description || "-"}</p>
             </div>
           )}
-          <button className={styles.button} type="button" onClick={logout} disabled={loading}>
-            로그아웃
-          </button>
         </aside>
       </section>
 
@@ -233,4 +225,3 @@ export default function CalendarPage() {
     </main>
   );
 }
-

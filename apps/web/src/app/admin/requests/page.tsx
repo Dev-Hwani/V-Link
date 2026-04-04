@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import styles from "./admin-requests.module.css";
 import { apiJson } from "../../../lib/api";
-import { clearSession, getRoleHome, getSession } from "../../../lib/session";
+import { getRoleHome, getSession } from "../../../lib/session";
 
 type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "IN_PROGRESS" | "COMPLETED";
 
@@ -134,11 +134,6 @@ export default function AdminRequestsPage() {
     }
   }
 
-  function logout() {
-    clearSession();
-    router.replace("/login");
-  }
-
   return (
     <main className={styles.page}>
       <header className={styles.header}>
@@ -236,9 +231,6 @@ export default function AdminRequestsPage() {
                 >
                   반려
                 </button>
-                <button className={styles.button} type="button" onClick={logout}>
-                  로그아웃
-                </button>
               </div>
             </>
           )}
@@ -247,4 +239,3 @@ export default function AdminRequestsPage() {
     </main>
   );
 }
-

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import styles from "./requester.module.css";
 import { API_BASE, apiJson } from "../../lib/api";
-import { clearSession, getRoleHome, getSession } from "../../lib/session";
+import { getRoleHome, getSession } from "../../lib/session";
 
 type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "IN_PROGRESS" | "COMPLETED";
 
@@ -126,11 +126,6 @@ export default function RequesterPage() {
     }
   }
 
-  function logout() {
-    clearSession();
-    router.replace("/login");
-  }
-
   return (
     <main className={styles.page}>
       <header className={styles.header}>
@@ -179,9 +174,6 @@ export default function RequesterPage() {
               <button className={styles.button} type="submit" disabled={loading}>
                 요청 등록
               </button>
-              <button className={styles.button} type="button" onClick={logout}>
-                로그아웃
-              </button>
             </div>
           </form>
         </article>
@@ -218,4 +210,3 @@ export default function RequesterPage() {
     </main>
   );
 }
-

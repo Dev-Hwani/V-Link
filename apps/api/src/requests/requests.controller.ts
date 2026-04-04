@@ -90,7 +90,7 @@ export class RequestsController {
     FileInterceptor("file", {
       storage: requestFileStorage,
       limits: {
-        fileSize: 10 * 1024 * 1024,
+        fileSize: 500 * 1024 * 1024,
       },
     }),
   )

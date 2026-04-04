@@ -21,10 +21,10 @@
 
 .notice {
   margin-bottom: 10px;
-  border: 1px solid #f0c9ce;
+  border: 1px solid var(--teams-danger-border);
   border-radius: 8px;
-  background: #fff4f5;
-  color: #8a2f3d;
+  background: var(--teams-danger-bg);
+  color: var(--teams-danger-text);
   padding: 8px 10px;
   font-size: 13px;
 }
@@ -77,7 +77,7 @@
   width: 100%;
   text-align: left;
   border: 1px solid var(--teams-border);
-  background: #fff;
+  background: var(--teams-surface);
   border-radius: 10px;
   padding: 10px;
   cursor: pointer;
@@ -85,7 +85,7 @@
 
 .activeItem {
   border-color: var(--teams-primary);
-  box-shadow: 0 0 0 2px rgba(98, 100, 167, 0.2);
+  box-shadow: 0 0 0 2px var(--teams-focus-ring);
 }
 
 .topRow {
@@ -100,9 +100,9 @@
   padding: 2px 8px;
   font-size: 11px;
   font-weight: 700;
-  border: 1px solid #cfd7e4;
-  background: #eef1fa;
-  color: #3a438f;
+  border: 1px solid var(--teams-secondary-border);
+  background: var(--teams-secondary-bg);
+  color: var(--teams-secondary-text);
 }
 
 .meta {
@@ -124,18 +124,19 @@
 
 .field select,
 .field textarea {
-  border: 1px solid #c8cfdd;
+  border: 1px solid var(--teams-input-border);
   border-radius: 8px;
   padding: 9px 10px;
   font-size: 14px;
-  background: #fff;
+  background: var(--teams-input-bg);
+  color: var(--teams-text);
 }
 
 .field select:focus,
 .field textarea:focus {
   outline: none;
   border-color: var(--teams-primary);
-  box-shadow: 0 0 0 3px rgba(98, 100, 167, 0.18);
+  box-shadow: 0 0 0 3px var(--teams-focus-ring);
 }
 
 .field textarea {
@@ -161,7 +162,7 @@
 }
 
 .danger {
-  background: #c34d61;
+  background: var(--teams-danger-action-bg);
 }
 
 .button:disabled {

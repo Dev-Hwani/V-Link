@@ -42,18 +42,19 @@
 .field input,
 .field textarea {
   width: 100%;
-  border: 1px solid #c8cfdb;
+  border: 1px solid var(--teams-input-border);
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 14px;
-  background: #fff;
+  background: var(--teams-input-bg);
+  color: var(--teams-text);
 }
 
 .field input:focus,
 .field textarea:focus {
   outline: none;
   border-color: var(--teams-primary);
-  box-shadow: 0 0 0 3px rgba(98, 100, 167, 0.18);
+  box-shadow: 0 0 0 3px var(--teams-focus-ring);
 }
 
 .field textarea {
@@ -79,11 +80,11 @@
 }
 
 .buttonAlt {
-  background: #2d7d61;
+  background: color-mix(in srgb, #2d7d61 80%, var(--teams-primary));
 }
 
 .buttonGhost {
-  background: #7a8192;
+  background: color-mix(in srgb, var(--teams-muted) 72%, var(--teams-surface));
 }
 
 .summaryRow {
@@ -97,8 +98,8 @@
   border: 1px solid var(--teams-border);
   border-radius: 10px;
   padding: 10px;
-  background: #fff;
-  box-shadow: 0 4px 14px rgba(24, 38, 64, 0.04);
+  background: var(--teams-surface);
+  box-shadow: var(--teams-shadow);
   display: grid;
   gap: 4px;
 }
@@ -124,12 +125,12 @@
   border-radius: 10px;
   padding: 12px;
   cursor: pointer;
-  background: #fff;
+  background: var(--teams-surface);
 }
 
 .itemActive {
   border-color: var(--teams-primary);
-  box-shadow: 0 0 0 2px rgba(98, 100, 167, 0.2);
+  box-shadow: 0 0 0 2px var(--teams-focus-ring);
 }
 
 .rowTop {
@@ -161,28 +162,28 @@
 }
 
 .PENDING {
-  background: #eceff5;
-  color: #485164;
+  background: var(--status-pending-bg);
+  color: var(--status-pending-text);
 }
 
 .APPROVED {
-  background: #e6ebfb;
-  color: #2f388f;
+  background: var(--status-approved-bg);
+  color: var(--status-approved-text);
 }
 
 .IN_PROGRESS {
-  background: #fff1d6;
-  color: #8b5b00;
+  background: var(--status-progress-bg);
+  color: var(--status-progress-text);
 }
 
 .COMPLETED {
-  background: #dff8ea;
-  color: #0f6d4c;
+  background: var(--status-completed-bg);
+  color: var(--status-completed-text);
 }
 
 .REJECTED {
-  background: #fde4e4;
-  color: #9c3232;
+  background: var(--status-rejected-bg);
+  color: var(--status-rejected-text);
 }
 
 .sectionTitle {
@@ -224,9 +225,9 @@
 .notice {
   margin-bottom: 10px;
   font-size: 13px;
-  color: #8a2f3d;
-  background: #fff4f5;
-  border: 1px solid #f0c9ce;
+  color: var(--teams-danger-text);
+  background: var(--teams-danger-bg);
+  border: 1px solid var(--teams-danger-border);
   padding: 8px 10px;
   border-radius: 8px;
 }

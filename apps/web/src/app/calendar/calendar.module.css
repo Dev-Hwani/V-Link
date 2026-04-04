@@ -47,17 +47,19 @@
 
 .field input,
 .field select {
-  border: 1px solid #c8cfdd;
+  border: 1px solid var(--teams-input-border);
   border-radius: 8px;
   padding: 9px 11px;
   font-size: 14px;
+  background: var(--teams-input-bg);
+  color: var(--teams-text);
 }
 
 .field input:focus,
 .field select:focus {
   outline: none;
   border-color: var(--teams-primary);
-  box-shadow: 0 0 0 3px rgba(98, 100, 167, 0.18);
+  box-shadow: 0 0 0 3px var(--teams-focus-ring);
 }
 
 .button {
@@ -97,9 +99,9 @@
 
 .notice {
   margin-bottom: 8px;
-  border: 1px solid #f0c9ce;
-  background: #fff4f5;
-  color: #8a2f3d;
+  border: 1px solid var(--teams-danger-border);
+  background: var(--teams-danger-bg);
+  color: var(--teams-danger-text);
   border-radius: 8px;
   padding: 8px 10px;
   font-size: 13px;
@@ -123,11 +125,101 @@
 
 .calendarWrap :global(.fc) {
   font-size: 14px;
+  color: var(--teams-text);
+  --fc-border-color: var(--teams-border);
+  --fc-page-bg-color: var(--teams-surface);
+  --fc-neutral-bg-color: var(--teams-surface-muted);
+  --fc-list-event-hover-bg-color: color-mix(in srgb, var(--teams-primary) 10%, var(--teams-surface));
+  --fc-today-bg-color: color-mix(in srgb, var(--teams-primary) 14%, transparent);
+  --fc-button-text-color: #fff;
+  --fc-button-bg-color: var(--teams-primary);
+  --fc-button-border-color: var(--teams-primary);
+  --fc-button-hover-bg-color: var(--teams-primary-strong);
+  --fc-button-hover-border-color: var(--teams-primary-strong);
+  --fc-button-active-bg-color: var(--teams-primary-strong);
+  --fc-button-active-border-color: var(--teams-primary-strong);
 }
 
-.calendarWrap :global(.fc-toolbar-title) {
+.calendarWrap :global(.fc .fc-toolbar.fc-header-toolbar) {
+  margin-bottom: 12px;
+  gap: 8px;
+}
+
+.calendarWrap :global(.fc .fc-toolbar-title) {
   font-size: 18px;
   font-weight: 700;
+  color: var(--teams-text);
+}
+
+.calendarWrap :global(.fc .fc-button) {
+  border-radius: 8px;
+  font-weight: 600;
+  box-shadow: none;
+}
+
+.calendarWrap :global(.fc .fc-button-primary:focus),
+.calendarWrap :global(.fc .fc-button-primary:focus-visible) {
+  box-shadow: 0 0 0 3px var(--teams-focus-ring);
+}
+
+.calendarWrap :global(.fc-theme-standard td),
+.calendarWrap :global(.fc-theme-standard th) {
+  border-color: var(--teams-border);
+}
+
+.calendarWrap :global(.fc .fc-scrollgrid),
+.calendarWrap :global(.fc .fc-popover),
+.calendarWrap :global(.fc .fc-daygrid-day-frame) {
+  background: var(--teams-surface);
+}
+
+.calendarWrap :global(.fc .fc-col-header-cell) {
+  background: var(--teams-surface-muted);
+}
+
+.calendarWrap :global(.fc .fc-col-header-cell-cushion) {
+  color: var(--teams-text);
+  font-weight: 600;
+  padding: 8px 6px;
+}
+
+.calendarWrap :global(.fc .fc-daygrid-day-number) {
+  color: var(--teams-text);
+  font-weight: 600;
+  padding: 8px;
+}
+
+.calendarWrap :global(.fc .fc-day-other .fc-daygrid-day-number) {
+  color: var(--teams-muted);
+}
+
+.calendarWrap :global(.fc .fc-daygrid-day.fc-day-today .fc-daygrid-day-number) {
+  color: var(--teams-primary);
+  font-weight: 700;
+}
+
+.calendarWrap :global(.fc .fc-daygrid-event),
+.calendarWrap :global(.fc .fc-timegrid-event) {
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.calendarWrap :global(.fc .fc-event-main) {
+  color: #fff;
+}
+
+.calendarWrap :global(.fc .fc-daygrid-more-link) {
+  color: var(--teams-secondary-text);
+}
+
+.calendarWrap :global(.fc .fc-popover-header) {
+  background: var(--teams-surface-muted);
+  color: var(--teams-text);
+}
+
+.calendarWrap :global(.fc .fc-popover-body) {
+  background: var(--teams-surface);
 }
 
 @media (max-width: 960px) {
@@ -137,5 +229,19 @@
 
   .filters {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .calendarWrap :global(.fc .fc-toolbar.fc-header-toolbar) {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .calendarWrap :global(.fc .fc-toolbar-chunk) {
+    display: flex;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 6px;
   }
 }

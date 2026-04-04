@@ -228,11 +228,7 @@ export default function RequesterPage() {
             {requests.map((item) => (
               <div
                 key={item.id}
-                className={styles.item}
-                style={{
-                  borderColor: item.id === selectedId ? "#2f6ddd" : undefined,
-                  boxShadow: item.id === selectedId ? "0 0 0 2px rgba(47, 109, 221, 0.2)" : undefined,
-                }}
+                className={`${styles.item} ${item.id === selectedId ? styles.itemActive : ""}`}
                 onClick={() => setSelectedId(item.id)}
               >
                 <strong>{item.title}</strong>

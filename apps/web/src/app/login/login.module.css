@@ -43,17 +43,18 @@
 }
 
 .field input {
-  border: 1px solid #c8cfdd;
+  border: 1px solid var(--teams-input-border);
   border-radius: 8px;
   padding: 10px 12px;
   font-size: 14px;
-  background: #fff;
+  background: var(--teams-input-bg);
+  color: var(--teams-text);
 }
 
 .field input:focus {
   outline: none;
   border-color: var(--teams-primary);
-  box-shadow: 0 0 0 3px rgba(98, 100, 167, 0.18);
+  box-shadow: 0 0 0 3px var(--teams-focus-ring);
 }
 
 .button {
@@ -74,10 +75,10 @@
 
 .notice {
   margin-top: 10px;
-  border: 1px solid #f0c9ce;
+  border: 1px solid var(--teams-danger-border);
   border-radius: 8px;
-  background: #fff4f5;
-  color: #8a2f3d;
+  background: var(--teams-danger-bg);
+  color: var(--teams-danger-text);
   font-size: 13px;
   padding: 8px 10px;
 }
@@ -89,7 +90,7 @@
 }
 
 .linkRow a {
-  color: #394394;
+  color: var(--teams-secondary-text);
   text-decoration: none;
   font-weight: 600;
 }

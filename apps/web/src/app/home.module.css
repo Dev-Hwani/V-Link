@@ -46,7 +46,7 @@
 
 .card p {
   margin: 0;
-  color: #4e586a;
+  color: var(--teams-muted);
 }
 
 .actions {
@@ -71,9 +71,9 @@
 }
 
 .secondary {
-  color: #394394;
-  background: #eaedfb;
-  border: 1px solid #cad1f0;
+  color: var(--teams-secondary-text);
+  background: var(--teams-secondary-bg);
+  border: 1px solid var(--teams-secondary-border);
 }
 
 .steps {
@@ -81,7 +81,7 @@
   padding-left: 18px;
   display: grid;
   gap: 6px;
-  color: #4e586a;
+  color: var(--teams-muted);
 }
 
 @media (max-width: 960px) {

@@ -9,6 +9,28 @@
   --teams-primary: #6264a7;
   --teams-primary-strong: #4f52b2;
   --teams-shadow: 0 8px 24px rgba(24, 35, 66, 0.08);
+  --teams-input-bg: #ffffff;
+  --teams-input-border: #c8cfdd;
+  --teams-focus-ring: rgba(98, 100, 167, 0.2);
+  --teams-danger-bg: #fff4f5;
+  --teams-danger-border: #f0c9ce;
+  --teams-danger-text: #8a2f3d;
+  --teams-danger-action-bg: #b5485d;
+  --teams-secondary-bg: #eaedfb;
+  --teams-secondary-border: #cad1f0;
+  --teams-secondary-text: #394394;
+  --teams-chart-track: #ecf0f6;
+  --teams-chart-fill-2: #7a7dd1;
+  --status-pending-bg: #eceff5;
+  --status-pending-text: #485164;
+  --status-approved-bg: #e6ebfb;
+  --status-approved-text: #2f388f;
+  --status-progress-bg: #fff1d6;
+  --status-progress-text: #8b5b00;
+  --status-completed-bg: #dff8ea;
+  --status-completed-text: #0f6d4c;
+  --status-rejected-bg: #fde4e4;
+  --status-rejected-text: #9c3232;
 }
 
 :root[data-theme="dark"] {
@@ -22,6 +44,28 @@
   --teams-primary: #7f85ff;
   --teams-primary-strong: #6c73ff;
   --teams-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
+  --teams-input-bg: #161b27;
+  --teams-input-border: #3a4461;
+  --teams-focus-ring: rgba(127, 133, 255, 0.25);
+  --teams-danger-bg: #3a1f27;
+  --teams-danger-border: #6b3443;
+  --teams-danger-text: #ffb8c7;
+  --teams-danger-action-bg: #ad4a61;
+  --teams-secondary-bg: #2a3150;
+  --teams-secondary-border: #434d75;
+  --teams-secondary-text: #c4cbff;
+  --teams-chart-track: #2a3249;
+  --teams-chart-fill-2: #97a0ff;
+  --status-pending-bg: #2b3347;
+  --status-pending-text: #d2daee;
+  --status-approved-bg: #2f3661;
+  --status-approved-text: #d9ddff;
+  --status-progress-bg: #4b3c25;
+  --status-progress-text: #ffe0a6;
+  --status-completed-bg: #224236;
+  --status-completed-text: #b9f1d3;
+  --status-rejected-bg: #4a2830;
+  --status-rejected-text: #ffbeca;
 }
 
 * {
@@ -172,9 +216,9 @@ a {
 }
 
 .app-nav-button {
-  border: 1px solid color-mix(in srgb, #b94860 35%, var(--teams-border));
-  background: color-mix(in srgb, #b94860 8%, var(--teams-surface));
-  color: #cc5670;
+  border: 1px solid var(--teams-danger-border);
+  background: color-mix(in srgb, var(--teams-danger-bg) 86%, var(--teams-surface));
+  color: var(--teams-danger-text);
 }
 
 .app-main {

@@ -32,7 +32,7 @@
 .summaryRow {
   margin-bottom: 12px;
   display: grid;
-  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
   gap: 10px;
 }
 
@@ -52,7 +52,7 @@
 
 .grid {
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
   gap: 12px;
 }
 
@@ -170,10 +170,6 @@
 }
 
 @media (max-width: 960px) {
-  .summaryRow {
-    grid-template-columns: repeat(2, minmax(120px, 1fr));
-  }
-
   .grid {
     grid-template-columns: 1fr;
   }

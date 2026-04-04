@@ -35,7 +35,7 @@
 }
 
 .rowTwo {
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 }
 
 .rowThree {
@@ -45,7 +45,7 @@
 .statusCards {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(5, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
 }
 
 .statusCard {
@@ -170,10 +170,6 @@
   .rowTwo,
   .rowThree {
     grid-template-columns: 1fr;
-  }
-
-  .statusCards {
-    grid-template-columns: repeat(2, minmax(120px, 1fr));
   }
 
   .barRow {

@@ -11,6 +11,19 @@
   --teams-shadow: 0 8px 24px rgba(24, 35, 66, 0.08);
 }
 
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --teams-bg: #11131b;
+  --teams-surface: #1a1d28;
+  --teams-surface-muted: #151823;
+  --teams-border: #2b3246;
+  --teams-text: #e8ebf5;
+  --teams-muted: #a7afc4;
+  --teams-primary: #7f85ff;
+  --teams-primary-strong: #6c73ff;
+  --teams-shadow: 0 10px 28px rgba(0, 0, 0, 0.38);
+}
+
 * {
   box-sizing: border-box;
 }
@@ -31,7 +44,7 @@ a {
 .app-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 248px minmax(0, 1fr);
+  grid-template-columns: clamp(216px, 18vw, 272px) minmax(0, 1fr);
 }
 
 .app-sidebar {
@@ -61,6 +74,8 @@ a {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  min-height: 0;
+  height: 100%;
 }
 
 .app-nav-group {
@@ -71,38 +86,46 @@ a {
 .app-nav-link {
   display: flex;
   align-items: center;
+  gap: 9px;
   text-decoration: none;
   font-size: 14px;
   border: 1px solid transparent;
   border-radius: 10px;
-  padding: 9px 12px;
+  padding: 9px 11px;
   background: transparent;
-  color: #2f3749;
+  color: var(--teams-text);
   font-weight: 500;
 }
 
 .app-nav-link:hover {
-  border-color: #d3d9ef;
-  background: #ecf0fb;
+  border-color: var(--teams-border);
+  background: color-mix(in srgb, var(--teams-primary) 9%, transparent);
 }
 
 .app-nav-link-active {
-  border-color: #c4ccf0;
-  background: #e7ebfa;
-  color: #31398f;
+  border-color: color-mix(in srgb, var(--teams-primary) 45%, var(--teams-border));
+  background: color-mix(in srgb, var(--teams-primary) 16%, transparent);
+  color: color-mix(in srgb, var(--teams-primary) 86%, var(--teams-text));
   font-weight: 700;
 }
 
-.app-nav-button {
-  margin-top: auto;
-  font-size: 13px;
-  border: 1px solid #e5c5ca;
-  border-radius: 10px;
-  padding: 10px 12px;
-  background: #fff;
-  color: #8d2f2f;
-  cursor: pointer;
-  width: 100%;
+.app-nav-icon {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.app-nav-icon svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.75;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .app-user-card {
@@ -128,15 +151,43 @@ a {
   text-overflow: ellipsis;
 }
 
+.app-nav-spacer {
+  flex: 1 1 auto;
+  min-height: 10px;
+}
+
+.app-theme-button,
+.app-nav-button {
+  font-size: 13px;
+  border-radius: 10px;
+  padding: 10px 12px;
+  cursor: pointer;
+  width: 100%;
+}
+
+.app-theme-button {
+  border: 1px solid var(--teams-border);
+  background: var(--teams-surface);
+  color: var(--teams-text);
+}
+
+.app-nav-button {
+  border: 1px solid color-mix(in srgb, #b94860 35%, var(--teams-border));
+  background: color-mix(in srgb, #b94860 8%, var(--teams-surface));
+  color: #cc5670;
+}
+
 .app-main {
   min-width: 0;
 }
 
 .app-content {
-  padding: 22px;
+  padding: clamp(14px, 2.2vw, 24px);
+  max-width: 1680px;
+  margin: 0 auto;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 1024px) {
   .app-shell {
     grid-template-columns: 1fr;
   }
@@ -149,13 +200,11 @@ a {
   }
 
   .app-nav {
+    height: auto;
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
-  }
-
-  .app-user-card {
-    min-width: 180px;
+    gap: 8px;
   }
 
   .app-nav-group {
@@ -164,8 +213,16 @@ a {
     gap: 6px;
   }
 
+  .app-user-card {
+    min-width: 180px;
+  }
+
+  .app-nav-spacer {
+    display: none;
+  }
+
+  .app-theme-button,
   .app-nav-button {
     width: auto;
-    margin-top: 0;
   }
 }

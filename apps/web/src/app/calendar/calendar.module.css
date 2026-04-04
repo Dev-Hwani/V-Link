@@ -78,14 +78,14 @@
 
 .topGrid {
   display: grid;
-  grid-template-columns: 1fr 320px;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 320px);
   gap: 12px;
   margin-bottom: 12px;
 }
 
 .filters {
   display: grid;
-  grid-template-columns: repeat(4, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 10px;
 }
 
@@ -136,6 +136,6 @@
   }
 
   .filters {
-    grid-template-columns: repeat(2, minmax(120px, 1fr));
+    grid-template-columns: 1fr;
   }
 }

@@ -6,6 +6,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { Prisma, RequestStatus, Role } from "@prisma/client";
+import ExcelJS from "exceljs";
 
 import { AuthUser } from "../common/interfaces/auth-user.interface";
 import { NotificationService } from "../notification/notification.service";
@@ -14,7 +15,34 @@ import { SapService } from "../sap/sap.service";
 import { ApproveRequestDto } from "./dto/approve-request.dto";
 import { CompleteRequestDto } from "./dto/complete-request.dto";
 import { CreateRequestDto } from "./dto/create-request.dto";
+import { AdminRequestExportFormat, ExportAdminRequestsQueryDto } from "./dto/export-admin-requests-query.dto";
+import { ListAdminRequestsQueryDto } from "./dto/list-admin-requests-query.dto";
 import { RejectRequestDto } from "./dto/reject-request.dto";
+
+interface AdminRequestTableRow {
+  id: string;
+  title: string;
+  requestType: string;
+  team: string;
+  status: RequestStatus;
+  dueDate: string;
+  createdAt: string;
+  completedAt: string;
+  rejectedReason: string;
+  description: string;
+  requester: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  assignedVendor: {
+    id: string;
+    code: string;
+    name: string;
+  } | null;
+  attachmentCount: number;
+  historyCount: number;
+}
 
 @Injectable()
 export class RequestsService {
@@ -101,6 +129,38 @@ export class RequestsService {
         createdAt: "desc",
       },
     });
+  }
+
+  async listAdminTable(query: ListAdminRequestsQueryDto) {
+    const take = Math.min(query.limit ?? 500, 5000);
+    const rows = await this.findAdminTableRows(query, take);
+    return {
+      count: rows.length,
+      items: rows,
+    };
+  }
+
+  async exportAdminTable(query: ExportAdminRequestsQueryDto) {
+    const format = query.format ?? AdminRequestExportFormat.XLSX;
+    const rows = await this.findAdminTableRows(query, 5000);
+    const timestamp = new Date().toISOString().replaceAll(":", "").replaceAll("-", "").slice(0, 15);
+    const baseName = `vas-requests-${timestamp}`;
+
+    if (format === AdminRequestExportFormat.XLSX) {
+      const content = await this.toAdminXlsxBuffer(rows);
+      return {
+        fileName: `${baseName}.xlsx`,
+        mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        content,
+      };
+    }
+
+    const content = Buffer.from(this.toAdminCsv(rows), "utf-8");
+    return {
+      fileName: `${baseName}.csv`,
+      mimeType: "text/csv; charset=utf-8",
+      content,
+    };
   }
 
   async getById(user: AuthUser, requestId: string) {
@@ -373,6 +433,203 @@ export class RequestsService {
         path: file.path,
       },
     });
+  }
+
+  private async findAdminTableRows(query: ListAdminRequestsQueryDto, take: number) {
+    const where = this.buildAdminTableWhere(query);
+
+    const requests = await this.prisma.vasRequest.findMany({
+      where,
+      include: {
+        requester: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        assignedVendor: {
+          select: {
+            id: true,
+            code: true,
+            name: true,
+          },
+        },
+        _count: {
+          select: {
+            attachments: true,
+            histories: true,
+          },
+        },
+      },
+      orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
+      take,
+    });
+
+    return requests.map((request) => ({
+      id: request.id,
+      title: request.title,
+      requestType: request.requestType,
+      team: request.team,
+      status: request.status,
+      dueDate: request.dueDate.toISOString(),
+      createdAt: request.createdAt.toISOString(),
+      completedAt: request.completedAt ? request.completedAt.toISOString() : "",
+      rejectedReason: request.rejectedReason ?? "",
+      description: request.description ?? "",
+      requester: {
+        id: request.requester.id,
+        name: request.requester.name,
+        email: request.requester.email,
+      },
+      assignedVendor: request.assignedVendor
+        ? {
+            id: request.assignedVendor.id,
+            code: request.assignedVendor.code,
+            name: request.assignedVendor.name,
+          }
+        : null,
+      attachmentCount: request._count.attachments,
+      historyCount: request._count.histories,
+    }));
+  }
+
+  private buildAdminTableWhere(query: ListAdminRequestsQueryDto): Prisma.VasRequestWhereInput {
+    const where: Prisma.VasRequestWhereInput = {};
+
+    if (query.status) {
+      where.status = query.status;
+    }
+
+    if (query.vendorId) {
+      where.assignedVendorId = query.vendorId;
+    }
+
+    if (query.requesterId) {
+      where.requesterId = query.requesterId;
+    }
+
+    if (query.from || query.to) {
+      where.dueDate = {};
+      if (query.from) {
+        where.dueDate.gte = new Date(query.from);
+      }
+      if (query.to) {
+        const end = new Date(query.to);
+        end.setHours(23, 59, 59, 999);
+        where.dueDate.lte = end;
+      }
+    }
+
+    if (query.search?.trim()) {
+      const keyword = query.search.trim();
+      where.OR = [
+        { title: { contains: keyword, mode: "insensitive" } },
+        { team: { contains: keyword, mode: "insensitive" } },
+        { requestType: { contains: keyword, mode: "insensitive" } },
+        { description: { contains: keyword, mode: "insensitive" } },
+        { requester: { name: { contains: keyword, mode: "insensitive" } } },
+        { requester: { email: { contains: keyword, mode: "insensitive" } } },
+        { assignedVendor: { name: { contains: keyword, mode: "insensitive" } } },
+        { assignedVendor: { code: { contains: keyword, mode: "insensitive" } } },
+      ];
+    }
+
+    return where;
+  }
+
+  private toAdminCsv(rows: AdminRequestTableRow[]) {
+    const headers = [
+      "id",
+      "status",
+      "requestType",
+      "title",
+      "team",
+      "dueDate",
+      "createdAt",
+      "completedAt",
+      "requesterName",
+      "requesterEmail",
+      "vendorCode",
+      "vendorName",
+      "attachmentCount",
+      "historyCount",
+      "rejectedReason",
+      "description",
+    ];
+
+    const lines = rows.map((row) =>
+      [
+        row.id,
+        row.status,
+        row.requestType,
+        row.title,
+        row.team,
+        row.dueDate,
+        row.createdAt,
+        row.completedAt,
+        row.requester.name,
+        row.requester.email,
+        row.assignedVendor?.code ?? "",
+        row.assignedVendor?.name ?? "",
+        String(row.attachmentCount),
+        String(row.historyCount),
+        row.rejectedReason,
+        row.description,
+      ]
+        .map((value) => `"${String(value).replaceAll("\"", "\"\"")}"`)
+        .join(","),
+    );
+
+    return `${headers.join(",")}\n${lines.join("\n")}`;
+  }
+
+  private async toAdminXlsxBuffer(rows: AdminRequestTableRow[]) {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("vas-requests");
+
+    sheet.columns = [
+      { header: "ID", key: "id", width: 38 },
+      { header: "상태", key: "status", width: 14 },
+      { header: "요청유형", key: "requestType", width: 16 },
+      { header: "제목", key: "title", width: 34 },
+      { header: "팀", key: "team", width: 16 },
+      { header: "마감일", key: "dueDate", width: 24 },
+      { header: "생성일", key: "createdAt", width: 24 },
+      { header: "완료일", key: "completedAt", width: 24 },
+      { header: "요청자", key: "requesterName", width: 18 },
+      { header: "요청자 이메일", key: "requesterEmail", width: 28 },
+      { header: "업체코드", key: "vendorCode", width: 16 },
+      { header: "업체명", key: "vendorName", width: 20 },
+      { header: "첨부수", key: "attachmentCount", width: 10 },
+      { header: "상태이력수", key: "historyCount", width: 12 },
+      { header: "반려사유", key: "rejectedReason", width: 40 },
+      { header: "설명", key: "description", width: 48 },
+    ];
+
+    rows.forEach((row) => {
+      sheet.addRow({
+        id: row.id,
+        status: row.status,
+        requestType: row.requestType,
+        title: row.title,
+        team: row.team,
+        dueDate: row.dueDate,
+        createdAt: row.createdAt,
+        completedAt: row.completedAt,
+        requesterName: row.requester.name,
+        requesterEmail: row.requester.email,
+        vendorCode: row.assignedVendor?.code ?? "",
+        vendorName: row.assignedVendor?.name ?? "",
+        attachmentCount: row.attachmentCount,
+        historyCount: row.historyCount,
+        rejectedReason: row.rejectedReason,
+        description: row.description,
+      });
+    });
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer as ArrayBuffer);
   }
 }
 

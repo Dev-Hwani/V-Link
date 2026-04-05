@@ -1,4 +1,4 @@
-﻿.page {
+.page {
   min-height: 100%;
   padding: 20px;
   background: var(--teams-bg);
@@ -38,8 +38,8 @@
   grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
 }
 
-.rowThree {
-  grid-template-columns: repeat(3, minmax(180px, 1fr));
+.kpiGrid {
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
 .statusCards {
@@ -66,10 +66,16 @@
   font-weight: 700;
 }
 
-.fieldRow {
+.kpiValue {
+  margin: 6px 0 0;
+  font-size: 28px;
+  font-weight: 800;
+}
+
+.filterRow {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(2, minmax(130px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
 }
 
 .field {
@@ -82,7 +88,8 @@
   color: var(--teams-muted);
 }
 
-.field input {
+.field input,
+.field select {
   border: 1px solid var(--teams-input-border);
   border-radius: 8px;
   padding: 9px 10px;
@@ -91,10 +98,18 @@
   color: var(--teams-text);
 }
 
-.field input:focus {
+.field input:focus,
+.field select:focus {
   outline: none;
   border-color: var(--teams-primary);
   box-shadow: 0 0 0 3px var(--teams-focus-ring);
+}
+
+.actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 
 .button {
@@ -106,6 +121,12 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+}
+
+.secondary {
+  color: var(--teams-secondary-text);
+  background: var(--teams-secondary-bg);
+  border: 1px solid var(--teams-secondary-border);
 }
 
 .button:disabled {
@@ -148,29 +169,44 @@
   background: linear-gradient(90deg, var(--teams-primary), var(--teams-chart-fill-2));
 }
 
-.vendorList {
-  display: grid;
-  gap: 8px;
-}
-
-.vendorCard {
+.tableWrap {
+  overflow: auto;
   border: 1px solid var(--teams-border);
   border-radius: 10px;
-  padding: 10px;
-  font-size: 13px;
-  display: grid;
-  gap: 4px;
 }
 
-.loginForm {
-  display: grid;
-  gap: 10px;
-  max-width: 420px;
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 760px;
+}
+
+.table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: var(--teams-surface-muted);
+  color: var(--teams-muted);
+  font-size: 12px;
+  text-align: left;
+  padding: 10px;
+  border-bottom: 1px solid var(--teams-border);
+}
+
+.table tbody td {
+  padding: 10px;
+  border-bottom: 1px solid var(--teams-border);
+  font-size: 13px;
+}
+
+.emptyRow {
+  text-align: center;
+  color: var(--teams-muted);
+  padding: 16px 10px;
 }
 
 @media (max-width: 960px) {
-  .rowTwo,
-  .rowThree {
+  .rowTwo {
     grid-template-columns: 1fr;
   }
 
@@ -178,3 +214,4 @@
     grid-template-columns: 76px 1fr 36px;
   }
 }
+

@@ -6,12 +6,15 @@ import {
   ParseUUIDPipe,
   Patch,
   Post,
+  Query,
+  Res,
   UploadedFile,
   UseGuards,
   UseInterceptors,
 } from "@nestjs/common";
 import { FileInterceptor } from "@nestjs/platform-express";
 import { Role } from "@prisma/client";
+import { Response } from "express";
 
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CurrentUser } from "../common/decorators/current-user.decorator";
@@ -22,6 +25,8 @@ import { requestFileStorage } from "../common/upload/request-file-storage";
 import { ApproveRequestDto } from "./dto/approve-request.dto";
 import { CompleteRequestDto } from "./dto/complete-request.dto";
 import { CreateRequestDto } from "./dto/create-request.dto";
+import { ExportAdminRequestsQueryDto } from "./dto/export-admin-requests-query.dto";
+import { ListAdminRequestsQueryDto } from "./dto/list-admin-requests-query.dto";
 import { RejectRequestDto } from "./dto/reject-request.dto";
 import { RequestsService } from "./requests.service";
 
@@ -40,6 +45,21 @@ export class RequestsController {
   @Roles(Role.ADMIN, Role.REQUESTER, Role.VENDOR)
   list(@CurrentUser() user: AuthUser) {
     return this.requestsService.list(user);
+  }
+
+  @Get("admin/table")
+  @Roles(Role.ADMIN)
+  listAdminTable(@Query() query: ListAdminRequestsQueryDto) {
+    return this.requestsService.listAdminTable(query);
+  }
+
+  @Get("admin/export")
+  @Roles(Role.ADMIN)
+  async exportAdminTable(@Query() query: ExportAdminRequestsQueryDto, @Res({ passthrough: true }) res: Response) {
+    const file = await this.requestsService.exportAdminTable(query);
+    res.setHeader("Content-Type", file.mimeType);
+    res.setHeader("Content-Disposition", `attachment; filename=\"${file.fileName}\"`);
+    return file.content;
   }
 
   @Get(":id")

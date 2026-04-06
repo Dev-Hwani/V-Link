@@ -1,7 +1,7 @@
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import { Prisma, SapJobLog, SapJobStatus, SapJobType } from "@prisma/client";
-import ExcelJS from "exceljs";
+import * as ExcelJS from "exceljs";
 
 import { NotificationService } from "../notification/notification.service";
 import { PrismaService } from "../prisma/prisma.service";

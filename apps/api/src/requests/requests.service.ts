@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from "@nestjs/common";
 import { Prisma, RequestStatus, Role } from "@prisma/client";
-import ExcelJS from "exceljs";
+import * as ExcelJS from "exceljs";
 
 import { AuthUser } from "../common/interfaces/auth-user.interface";
 import { NotificationService } from "../notification/notification.service";

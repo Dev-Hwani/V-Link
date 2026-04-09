@@ -199,6 +199,13 @@
   font-size: 13px;
 }
 
+.descriptionCell {
+  min-width: 280px;
+  max-width: 420px;
+  white-space: normal;
+  line-height: 1.45;
+}
+
 .emptyRow {
   text-align: center;
   color: var(--teams-muted);
@@ -214,4 +221,3 @@
     grid-template-columns: 76px 1fr 36px;
   }
 }
-

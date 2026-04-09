@@ -32,10 +32,9 @@ interface RequestRow {
   id: string;
   title: string;
   requestType: string;
-  description: string;
   status: RequestStatus;
   dueDate: string;
-  createdAt: string;
+  description: string;
   requester: {
     id: string;
     name: string;
@@ -46,7 +45,6 @@ interface RequestRow {
     code: string;
     name: string;
   } | null;
-  attachmentCount: number;
 }
 
 interface AppliedDashboardFilter {
@@ -150,7 +148,7 @@ export default function DashboardPage() {
         apiJson<DashboardSummary>(`/dashboard/summary?${summaryQuery.toString()}`, currentToken, {
           method: "GET",
         }),
-        apiJson<RequestTableResponse>(`/requests/admin/table?${tableQuery.toString()}`, currentToken, {
+        apiJson<RequestTableResponse>(`/dashboard/detail-table?${tableQuery.toString()}`, currentToken, {
           method: "GET",
         }),
       ]);
@@ -187,7 +185,7 @@ export default function DashboardPage() {
       }
       query.set("format", format);
 
-      const response = await fetch(`${API_BASE}/requests/admin/export?${query.toString()}`, {
+      const response = await fetch(`${API_BASE}/dashboard/export?${query.toString()}`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -430,7 +428,7 @@ export default function DashboardPage() {
                         <td>{row.requester.name}</td>
                         <td>{row.assignedVendor?.name ?? "-"}</td>
                         <td>{new Date(row.dueDate).toLocaleDateString()}</td>
-                        <td>{row.description || "-"}</td>
+                        <td className={styles.descriptionCell}>{row.description || "-"}</td>
                       </tr>
                     ))}
                     {tableRows.length === 0 && (

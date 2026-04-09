@@ -44,6 +44,7 @@ model User {
   approvedRequests  VasRequest[]    @relation("ApproverRequests")
   createdAssignments Assignment[]   @relation("AssignmentsByAdmin")
   statusEvents      StatusHistory[] @relation("StatusActor")
+  notifications     AppNotification[]
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 }
@@ -153,4 +154,21 @@ model SapJobLog {
 
   @@index([requestId])
   @@index([jobType, status])
+}
+
+model AppNotification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category  String
+  title     String
+  message   String
+  payload   Json?
+  isRead    Boolean  @default(false)
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
 }

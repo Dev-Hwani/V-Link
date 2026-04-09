@@ -4,12 +4,11 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-import { API_BASE } from "../lib/api";
 import { roleLabel } from "../lib/display";
 import { clearSession, getSession, type SessionData } from "../lib/session";
 
 type ThemeMode = "light" | "dark";
-type MenuIconName = "workspace" | "dashboard" | "calendar" | "notifications" | "login" | "signup";
+type MenuIconName = "workspace" | "dashboard" | "calendar" | "login" | "signup";
 
 interface MenuItem {
   href: string;
@@ -45,15 +44,6 @@ function NavIcon({ name }: { name: MenuIconName }) {
     );
   }
 
-  if (name === "notifications") {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 4.5a5.5 5.5 0 0 1 5.5 5.5v3.1l1.4 2.6a1 1 0 0 1-.88 1.48H5.98a1 1 0 0 1-.88-1.48l1.4-2.6V10A5.5 5.5 0 0 1 12 4.5Z" />
-        <path d="M9.5 18a2.5 2.5 0 0 0 5 0" />
-      </svg>
-    );
-  }
-
   if (name === "signup") {
     return (
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -76,70 +66,27 @@ export function AppNav() {
   const pathname = usePathname();
   const [session, setSession] = useState<SessionData | null>(null);
   const [theme, setTheme] = useState<ThemeMode>("light");
-  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const syncSession = () => setSession(getSession());
-    const syncUnread = () => {
-      const current = getSession();
-      if (!current) {
-        setUnreadCount(0);
-        return;
-      }
-      void fetchUnreadCount(current.accessToken).then((count) => setUnreadCount(count));
-    };
     syncSession();
 
     const currentTheme = document.documentElement.dataset.theme;
     setTheme(currentTheme === "dark" ? "dark" : "light");
 
     window.addEventListener("storage", syncSession);
-    window.addEventListener("vlink-notification-updated", syncUnread);
     return () => {
       window.removeEventListener("storage", syncSession);
-      window.removeEventListener("vlink-notification-updated", syncUnread);
     };
   }, []);
 
   useEffect(() => {
-    const current = getSession();
-    setSession(current);
-    if (!current) {
-      setUnreadCount(0);
-      return;
-    }
-    void fetchUnreadCount(current.accessToken).then((count) => setUnreadCount(count));
+    setSession(getSession());
   }, [pathname]);
-
-  useEffect(() => {
-    if (!session) {
-      setUnreadCount(0);
-      return;
-    }
-
-    let active = true;
-    const pull = async () => {
-      const count = await fetchUnreadCount(session.accessToken);
-      if (active) {
-        setUnreadCount(count);
-      }
-    };
-
-    void pull();
-    const timer = window.setInterval(() => {
-      void pull();
-    }, 30000);
-
-    return () => {
-      active = false;
-      window.clearInterval(timer);
-    };
-  }, [session?.accessToken]);
 
   function onLogout() {
     clearSession();
     setSession(null);
-    setUnreadCount(0);
     router.push("/login");
     router.refresh();
   }
@@ -155,7 +102,6 @@ export function AppNav() {
     if (path === "/") {
       return pathname === "/";
     }
-
     return pathname === path || pathname.startsWith(`${path}/`);
   }
 
@@ -165,19 +111,14 @@ export function AppNav() {
           { href: "/admin/requests", label: "작업", icon: "workspace" },
           { href: "/dashboard", label: "대시보드", icon: "dashboard" },
           { href: "/calendar", label: "캘린더", icon: "calendar" },
-          { href: "/notifications", label: "알림센터", icon: "notifications" },
         ]
       : session?.user.role === "REQUESTER"
         ? [
             { href: "/requester", label: "작업", icon: "workspace" },
             { href: "/calendar", label: "캘린더", icon: "calendar" },
-            { href: "/notifications", label: "알림센터", icon: "notifications" },
           ]
         : session?.user.role === "VENDOR"
-          ? [
-              { href: "/vendor", label: "작업", icon: "workspace" },
-              { href: "/notifications", label: "알림센터", icon: "notifications" },
-            ]
+          ? [{ href: "/vendor", label: "작업", icon: "workspace" }]
           : [];
 
   return (
@@ -215,12 +156,7 @@ export function AppNav() {
                 <span className="app-nav-icon">
                   <NavIcon name={menu.icon} />
                 </span>
-                <span className="app-nav-label">
-                  {menu.label}
-                  {menu.href === "/notifications" && unreadCount > 0 && (
-                    <span className="app-nav-badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
-                  )}
-                </span>
+                <span className="app-nav-label">{menu.label}</span>
               </Link>
             ))}
           </div>
@@ -240,24 +176,4 @@ export function AppNav() {
       )}
     </nav>
   );
-}
-
-async function fetchUnreadCount(accessToken: string) {
-  try {
-    const response = await fetch(`${API_BASE}/notifications/unread-count`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      cache: "no-store",
-    });
-
-    if (!response.ok) {
-      return 0;
-    }
-
-    const data = (await response.json()) as { count?: number };
-    return typeof data.count === "number" ? data.count : 0;
-  } catch {
-    return 0;
-  }
 }

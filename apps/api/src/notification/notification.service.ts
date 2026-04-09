@@ -120,6 +120,31 @@ export class NotificationService {
     return { count };
   }
 
+  async getUnreadRequestIds(userId: string) {
+    const unreadRows = await this.prisma.appNotification.findMany({
+      where: {
+        userId,
+        isRead: false,
+      },
+      select: {
+        payload: true,
+      },
+    });
+
+    const requestIds = new Set<string>();
+    unreadRows.forEach((row) => {
+      const requestId = this.extractRequestId(row.payload);
+      if (requestId) {
+        requestIds.add(requestId);
+      }
+    });
+
+    return {
+      count: unreadRows.length,
+      requestIds: [...requestIds],
+    };
+  }
+
   async markAsRead(userId: string, notificationId: string) {
     const current = await this.prisma.appNotification.findFirst({
       where: {
@@ -142,6 +167,33 @@ export class NotificationService {
       data: {
         isRead: true,
         readAt: new Date(),
+      },
+      select: notificationSelect,
+    });
+  }
+
+  async markAsUnread(userId: string, notificationId: string) {
+    const current = await this.prisma.appNotification.findFirst({
+      where: {
+        id: notificationId,
+        userId,
+      },
+      select: notificationSelect,
+    });
+
+    if (!current) {
+      throw new NotFoundException("Notification not found");
+    }
+
+    if (!current.isRead) {
+      return current;
+    }
+
+    return this.prisma.appNotification.update({
+      where: { id: notificationId },
+      data: {
+        isRead: false,
+        readAt: null,
       },
       select: notificationSelect,
     });
@@ -358,5 +410,17 @@ export class NotificationService {
   private toJson(value: unknown): Prisma.InputJsonValue {
     return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
   }
-}
 
+  private extractRequestId(payload: Prisma.JsonValue | null): string | null {
+    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+      return null;
+    }
+
+    if (!Object.prototype.hasOwnProperty.call(payload, "requestId")) {
+      return null;
+    }
+
+    const requestId = (payload as Record<string, unknown>).requestId;
+    return typeof requestId === "string" && requestId.length > 0 ? requestId : null;
+  }
+}

@@ -51,6 +51,21 @@ interface AdminFilters {
   dueTo: string;
 }
 
+interface NotificationItem {
+  id: string;
+  category: string;
+  title: string;
+  message: string;
+  isRead: boolean;
+  readAt: string | null;
+  createdAt: string;
+}
+
+interface UnreadRequestState {
+  count: number;
+  requestIds: string[];
+}
+
 function filenameFromDisposition(disposition: string | null, fallback: string) {
   if (!disposition) {
     return fallback;
@@ -88,6 +103,22 @@ function statusBadgeClass(status: RequestStatus) {
   return styles.statusBadge;
 }
 
+function toLocaleDate(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+  return date.toLocaleDateString();
+}
+
+function toLocaleDateTime(value: string) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+  return date.toLocaleString();
+}
+
 export default function AdminRequestsPage() {
   const router = useRouter();
   const [token, setToken] = useState("");
@@ -113,8 +144,17 @@ export default function AdminRequestsPage() {
     dueTo: "",
   });
 
+  const [processModalOpen, setProcessModalOpen] = useState(false);
+  const [notificationModalOpen, setNotificationModalOpen] = useState(false);
+  const [notificationItems, setNotificationItems] = useState<NotificationItem[]>([]);
+  const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
+  const [unreadRequestIds, setUnreadRequestIds] = useState<string[]>([]);
+  const [notificationLoading, setNotificationLoading] = useState(false);
+  const [notificationUpdatingId, setNotificationUpdatingId] = useState("");
+
   const selected = useMemo(() => requests.find((item) => item.id === selectedId) ?? null, [requests, selectedId]);
   const canProcessSelected = selected?.status === "PENDING";
+  const unreadRequestIdSet = useMemo(() => new Set(unreadRequestIds), [unreadRequestIds]);
 
   const summary = useMemo(() => {
     const base = {
@@ -165,6 +205,31 @@ export default function AdminRequestsPage() {
     void loadData(token);
   }, [token]);
 
+  useEffect(() => {
+    if (!notificationModalOpen || !token) {
+      return;
+    }
+    void loadNotifications(token);
+  }, [notificationModalOpen, token]);
+
+  useEffect(() => {
+    if (!processModalOpen && !notificationModalOpen) {
+      return;
+    }
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setProcessModalOpen(false);
+        setNotificationModalOpen(false);
+      }
+    };
+
+    window.addEventListener("keydown", onKeyDown);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+    };
+  }, [processModalOpen, notificationModalOpen]);
+
   function buildQuery(filters: AdminFilters, includeFormat?: ExportFormat) {
     const query = new URLSearchParams();
     if (filters.search.trim()) {
@@ -192,25 +257,36 @@ export default function AdminRequestsPage() {
     return { search, statusFilter, vendorFilter, dueFrom, dueTo };
   }
 
+  async function refreshUnreadState(currentToken: string) {
+    const unread = await apiJson<UnreadRequestState>("/notifications/unread-request-ids", currentToken, { method: "GET" });
+    setNotificationUnreadCount(unread.count ?? 0);
+    setUnreadRequestIds(Array.isArray(unread.requestIds) ? unread.requestIds : []);
+    window.dispatchEvent(new Event("vlink-notification-updated"));
+  }
+
   async function loadData(currentToken: string, filters = currentFilters()) {
     setLoading(true);
     setNotice("");
+
     try {
       const query = buildQuery(filters);
-      const [requestData, vendorData] = await Promise.all([
+      const [requestData, vendorData, unread] = await Promise.all([
         apiJson<AdminTableResponse>(`/requests/admin/table?${query}`, currentToken, { method: "GET" }),
         apiJson<VendorOption[]>("/calendar/vendors", currentToken, { method: "GET" }),
+        apiJson<UnreadRequestState>("/notifications/unread-request-ids", currentToken, { method: "GET" }),
       ]);
 
       setRequests(requestData.items);
       setVendors(vendorData);
       setAppliedFilters(filters);
+      setNotificationUnreadCount(unread.count ?? 0);
+      setUnreadRequestIds(Array.isArray(unread.requestIds) ? unread.requestIds : []);
 
       if (requestData.items.length > 0) {
-        const target = requestData.items.some((item) => item.id === selectedId) ? selectedId : requestData.items[0].id;
-        setSelectedId(target);
-        const found = requestData.items.find((item) => item.id === target);
-        setSelectedVendorId(found?.assignedVendor?.id ?? "");
+        const targetId = requestData.items.some((item) => item.id === selectedId) ? selectedId : requestData.items[0].id;
+        const target = requestData.items.find((item) => item.id === targetId) ?? null;
+        setSelectedId(targetId);
+        setSelectedVendorId(target?.assignedVendor?.id ?? "");
       } else {
         setSelectedId("");
         setSelectedVendorId("");
@@ -223,12 +299,38 @@ export default function AdminRequestsPage() {
     }
   }
 
+  async function loadNotifications(currentToken: string) {
+    setNotificationLoading(true);
+    setNotice("");
+
+    try {
+      const query = new URLSearchParams();
+      query.set("limit", "120");
+      const list = await apiJson<NotificationItem[]>(`/notifications?${query.toString()}`, currentToken, { method: "GET" });
+      setNotificationItems(list);
+      await refreshUnreadState(currentToken);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "알림 조회에 실패했습니다.";
+      setNotice(message);
+    } finally {
+      setNotificationLoading(false);
+    }
+  }
+
+  function openProcessModal(item: RequestItem) {
+    setSelectedId(item.id);
+    setSelectedVendorId(item.assignedVendor?.id ?? "");
+    setRejectReason("");
+    setProcessModalOpen(true);
+  }
+
   async function approveSelected() {
     if (!token || !selectedId || !selectedVendorId) {
       return;
     }
 
     setLoading(true);
+    setNotice("");
     try {
       await apiJson(`/requests/${selectedId}/approve`, token, {
         method: "PATCH",
@@ -236,10 +338,10 @@ export default function AdminRequestsPage() {
         body: JSON.stringify({ vendorId: selectedVendorId }),
       });
       await loadData(token, appliedFilters);
-      setRejectReason("");
-      setNotice("요청 승인 및 업체 배정이 완료되었습니다.");
+      setProcessModalOpen(false);
+      setNotice("요청 승인 및 업체 배정을 완료했습니다.");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "승인 처리에 실패했습니다.";
+      const message = error instanceof Error ? error.message : "요청 승인에 실패했습니다.";
       setNotice(message);
     } finally {
       setLoading(false);
@@ -252,6 +354,7 @@ export default function AdminRequestsPage() {
     }
 
     setLoading(true);
+    setNotice("");
     try {
       await apiJson(`/requests/${selectedId}/reject`, token, {
         method: "PATCH",
@@ -259,10 +362,11 @@ export default function AdminRequestsPage() {
         body: JSON.stringify({ reason: rejectReason }),
       });
       await loadData(token, appliedFilters);
+      setProcessModalOpen(false);
       setRejectReason("");
-      setNotice("요청 반려 처리가 완료되었습니다.");
+      setNotice("요청 반려를 완료했습니다.");
     } catch (error) {
-      const message = error instanceof Error ? error.message : "반려 처리에 실패했습니다.";
+      const message = error instanceof Error ? error.message : "요청 반려에 실패했습니다.";
       setNotice(message);
     } finally {
       setLoading(false);
@@ -288,7 +392,7 @@ export default function AdminRequestsPage() {
 
       if (!response.ok) {
         const text = await response.text();
-        throw new Error(text || `내보내기 실패 (HTTP ${response.status})`);
+        throw new Error(text || `파일 생성 실패 (HTTP ${response.status})`);
       }
 
       const blob = await response.blob();
@@ -310,11 +414,50 @@ export default function AdminRequestsPage() {
     }
   }
 
+  async function markAllNotificationsRead() {
+    if (!token || notificationUnreadCount === 0) {
+      return;
+    }
+
+    setNotificationLoading(true);
+    setNotice("");
+    try {
+      await apiJson("/notifications/read-all", token, { method: "PATCH" });
+      await loadNotifications(token);
+      await loadData(token, appliedFilters);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "전체 읽음 처리에 실패했습니다.";
+      setNotice(message);
+    } finally {
+      setNotificationLoading(false);
+    }
+  }
+
+  async function toggleNotificationRead(item: NotificationItem) {
+    if (!token) {
+      return;
+    }
+
+    setNotificationUpdatingId(item.id);
+    setNotice("");
+    try {
+      const actionPath = item.isRead ? `/notifications/${item.id}/unread` : `/notifications/${item.id}/read`;
+      await apiJson(actionPath, token, { method: "PATCH" });
+      await loadNotifications(token);
+      await loadData(token, appliedFilters);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "알림 상태 변경에 실패했습니다.";
+      setNotice(message);
+    } finally {
+      setNotificationUpdatingId("");
+    }
+  }
+
   return (
     <main className={styles.page}>
       <header className={styles.header}>
         <h1 className={styles.title}>관리자 작업 화면</h1>
-        <p className={styles.subtitle}>VAS 작업 현황을 KPI와 상세 표로 동시에 확인하고 즉시 승인/반려를 처리합니다.</p>
+        <p className={styles.subtitle}>요청 목록에서 안읽음 상태를 확인하고 모달에서 승인/반려를 처리합니다.</p>
       </header>
 
       {notice && <div className={styles.notice}>{notice}</div>}
@@ -341,7 +484,7 @@ export default function AdminRequestsPage() {
           <strong>{summary.unassigned}</strong>
         </article>
         <article className={styles.summaryCard}>
-          <span className={styles.summaryLabel}>지연 건</span>
+          <span className={styles.summaryLabel}>지연</span>
           <strong>{summary.overdueOpen}</strong>
         </article>
       </section>
@@ -391,13 +534,8 @@ export default function AdminRequestsPage() {
             </div>
           </div>
           <div className={styles.actions}>
-            <button
-              className={styles.button}
-              type="button"
-              onClick={() => void loadData(token, currentFilters())}
-              disabled={loading}
-            >
-              {loading ? "불러오는 중..." : "필터 적용"}
+            <button className={styles.button} type="button" onClick={() => void loadData(token, currentFilters())} disabled={loading}>
+              {loading ? "조회 중..." : "필터 적용"}
             </button>
             <button
               className={`${styles.button} ${styles.secondary}`}
@@ -441,6 +579,31 @@ export default function AdminRequestsPage() {
         </article>
 
         <article className={styles.card}>
+          <div className={styles.notificationBar}>
+            <div className={styles.notificationSummary}>
+              <span className={styles.summaryLabel}>안읽음 알림</span>
+              <strong className={styles.notificationCount}>{notificationUnreadCount}</strong>
+            </div>
+            <div className={styles.actions}>
+              <button
+                className={`${styles.button} ${styles.secondary}`}
+                type="button"
+                onClick={() => setNotificationModalOpen(true)}
+                disabled={loading}
+              >
+                알림 관리
+              </button>
+              <button
+                className={`${styles.button} ${styles.secondary}`}
+                type="button"
+                onClick={() => void markAllNotificationsRead()}
+                disabled={loading || notificationUnreadCount === 0}
+              >
+                전체 읽음
+              </button>
+            </div>
+          </div>
+
           <h2 className={styles.sectionTitle}>요청 상세 표</h2>
           <div className={styles.tableWrap}>
             <table className={styles.table}>
@@ -453,35 +616,53 @@ export default function AdminRequestsPage() {
                   <th>현재 배정 업체</th>
                   <th>마감일</th>
                   <th>상세 설명</th>
+                  <th>처리</th>
                 </tr>
               </thead>
               <tbody>
                 {requests.map((item) => {
                   const active = item.id === selectedId;
+                  const isUnread = unreadRequestIdSet.has(item.id);
                   return (
                     <tr
                       key={item.id}
-                      className={`${styles.tableRow} ${active ? styles.tableRowActive : ""}`}
-                      onClick={() => {
-                        setSelectedId(item.id);
-                        setSelectedVendorId(item.assignedVendor?.id ?? "");
-                      }}
+                      className={`${styles.tableRow} ${active ? styles.tableRowActive : ""} ${
+                        isUnread ? styles.tableRowUnread : ""
+                      }`}
+                      onClick={() => openProcessModal(item)}
                     >
-                      <td>{item.title}</td>
+                      <td>
+                        <div className={styles.titleCell}>
+                          <span className={isUnread ? styles.titleUnread : undefined}>{item.title}</span>
+                          {isUnread && <span className={styles.unreadChip}>안읽음</span>}
+                        </div>
+                      </td>
                       <td>
                         <span className={statusBadgeClass(item.status)}>{requestStatusLabel(item.status)}</span>
                       </td>
                       <td>{requestTypeLabel(item.requestType)}</td>
                       <td>{item.requester.name}</td>
                       <td>{item.assignedVendor?.name ?? "-"}</td>
-                      <td>{new Date(item.dueDate).toLocaleDateString()}</td>
+                      <td>{toLocaleDate(item.dueDate)}</td>
                       <td className={styles.descriptionCell}>{item.description || "-"}</td>
+                      <td>
+                        <button
+                          className={`${styles.button} ${styles.secondary} ${styles.smallButton}`}
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            openProcessModal(item);
+                          }}
+                        >
+                          처리
+                        </button>
+                      </td>
                     </tr>
                   );
                 })}
                 {requests.length === 0 && (
                   <tr>
-                    <td colSpan={7} className={styles.emptyRow}>
+                    <td colSpan={8} className={styles.emptyRow}>
                       조회된 요청이 없습니다.
                     </td>
                   </tr>
@@ -490,103 +671,173 @@ export default function AdminRequestsPage() {
             </table>
           </div>
         </article>
-
-        <article className={styles.card}>
-          <h2 className={styles.sectionTitle}>처리 패널</h2>
-          {!selected && <p>상세 표에서 요청을 선택하세요.</p>}
-          {selected && (
-            <>
-              <div className={styles.detailGrid}>
-                <div>
-                  <span className={styles.detailLabel}>제목</span>
-                  <p>{selected.title}</p>
-                </div>
-                <div>
-                  <span className={styles.detailLabel}>상태</span>
-                  <p>{requestStatusLabel(selected.status)}</p>
-                </div>
-                <div>
-                  <span className={styles.detailLabel}>요청 유형</span>
-                  <p>{requestTypeLabel(selected.requestType)}</p>
-                </div>
-                <div>
-                  <span className={styles.detailLabel}>요청자</span>
-                  <p>
-                    {selected.requester.name} ({selected.requester.email})
-                  </p>
-                </div>
-                <div>
-                  <span className={styles.detailLabel}>현재 배정 업체</span>
-                  <p>{selected.assignedVendor?.name ?? "-"}</p>
-                </div>
-                <div>
-                  <span className={styles.detailLabel}>마감일</span>
-                  <p>{new Date(selected.dueDate).toLocaleString()}</p>
-                </div>
-                <div>
-                  <span className={styles.detailLabel}>상세 설명</span>
-                  <p>{selected.description || "-"}</p>
-                </div>
-                <div>
-                  <span className={styles.detailLabel}>반려 사유</span>
-                  <p>{selected.rejectedReason || "-"}</p>
-                </div>
-              </div>
-
-              {!canProcessSelected && <p className={styles.meta}>대기 상태 요청만 승인/반려를 처리할 수 있습니다.</p>}
-
-              <div className={styles.field}>
-                <label htmlFor="vendor">배정 업체</label>
-                <select id="vendor" value={selectedVendorId} onChange={(event) => setSelectedVendorId(event.target.value)}>
-                  <option value="">선택</option>
-                  {vendors.map((vendor) => (
-                    <option key={vendor.id} value={vendor.id}>
-                      {vendor.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className={styles.field}>
-                <label htmlFor="reject">반려 사유</label>
-                <textarea
-                  id="reject"
-                  value={rejectReason}
-                  onChange={(event) => setRejectReason(event.target.value)}
-                  placeholder="반려 사유를 입력하세요"
-                />
-              </div>
-
-              <div className={styles.actions}>
-                <button
-                  className={styles.button}
-                  type="button"
-                  onClick={() => void loadData(token, appliedFilters)}
-                  disabled={loading}
-                >
-                  새로고침
-                </button>
-                <button
-                  className={styles.button}
-                  type="button"
-                  onClick={approveSelected}
-                  disabled={loading || !selectedVendorId || !canProcessSelected}
-                >
-                  승인 및 배정
-                </button>
-                <button
-                  className={`${styles.button} ${styles.danger}`}
-                  type="button"
-                  onClick={rejectSelected}
-                  disabled={loading || !rejectReason.trim() || !canProcessSelected}
-                >
-                  반려
-                </button>
-              </div>
-            </>
-          )}
-        </article>
       </section>
+
+      {processModalOpen && selected && (
+        <div className={styles.modalBackdrop} onClick={() => setProcessModalOpen(false)}>
+          <div className={styles.modalPanel} onClick={(event) => event.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2>요청 처리</h2>
+              <button
+                className={`${styles.button} ${styles.secondary} ${styles.smallButton}`}
+                type="button"
+                onClick={() => setProcessModalOpen(false)}
+              >
+                닫기
+              </button>
+            </div>
+
+            <div className={styles.detailGrid}>
+              <div>
+                <span className={styles.detailLabel}>제목</span>
+                <p>{selected.title}</p>
+              </div>
+              <div>
+                <span className={styles.detailLabel}>상태</span>
+                <p>{requestStatusLabel(selected.status)}</p>
+              </div>
+              <div>
+                <span className={styles.detailLabel}>요청 유형</span>
+                <p>{requestTypeLabel(selected.requestType)}</p>
+              </div>
+              <div>
+                <span className={styles.detailLabel}>요청자</span>
+                <p>
+                  {selected.requester.name} ({selected.requester.email})
+                </p>
+              </div>
+              <div>
+                <span className={styles.detailLabel}>현재 배정 업체</span>
+                <p>{selected.assignedVendor?.name ?? "-"}</p>
+              </div>
+              <div>
+                <span className={styles.detailLabel}>마감일</span>
+                <p>{toLocaleDateTime(selected.dueDate)}</p>
+              </div>
+              <div>
+                <span className={styles.detailLabel}>상세 설명</span>
+                <p>{selected.description || "-"}</p>
+              </div>
+              <div>
+                <span className={styles.detailLabel}>반려 사유</span>
+                <p>{selected.rejectedReason || "-"}</p>
+              </div>
+            </div>
+
+            {!canProcessSelected && <p className={styles.meta}>대기 상태 요청만 승인/반려를 처리할 수 있습니다.</p>}
+
+            <div className={styles.field}>
+              <label htmlFor="vendor">배정 업체</label>
+              <select id="vendor" value={selectedVendorId} onChange={(event) => setSelectedVendorId(event.target.value)}>
+                <option value="">선택</option>
+                {vendors.map((vendor) => (
+                  <option key={vendor.id} value={vendor.id}>
+                    {vendor.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className={styles.field}>
+              <label htmlFor="reject">반려 사유</label>
+              <textarea
+                id="reject"
+                value={rejectReason}
+                onChange={(event) => setRejectReason(event.target.value)}
+                placeholder="반려 사유를 입력하세요"
+              />
+            </div>
+
+            <div className={styles.actions}>
+              <button className={styles.button} type="button" onClick={() => void loadData(token, appliedFilters)} disabled={loading}>
+                새로고침
+              </button>
+              <button
+                className={styles.button}
+                type="button"
+                onClick={approveSelected}
+                disabled={loading || !selectedVendorId || !canProcessSelected}
+              >
+                승인 및 배정
+              </button>
+              <button
+                className={`${styles.button} ${styles.danger}`}
+                type="button"
+                onClick={rejectSelected}
+                disabled={loading || !rejectReason.trim() || !canProcessSelected}
+              >
+                반려
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {notificationModalOpen && (
+        <div className={styles.modalBackdrop} onClick={() => setNotificationModalOpen(false)}>
+          <div className={styles.modalPanelWide} onClick={(event) => event.stopPropagation()}>
+            <div className={styles.modalHeader}>
+              <h2>알림 관리</h2>
+              <button
+                className={`${styles.button} ${styles.secondary} ${styles.smallButton}`}
+                type="button"
+                onClick={() => setNotificationModalOpen(false)}
+              >
+                닫기
+              </button>
+            </div>
+
+            <div className={styles.actions}>
+              <span className={styles.notificationBadge}>안읽음 {notificationUnreadCount}</span>
+              <button className={styles.button} type="button" onClick={() => void loadNotifications(token)} disabled={notificationLoading}>
+                {notificationLoading ? "조회 중..." : "새로고침"}
+              </button>
+              <button
+                className={`${styles.button} ${styles.secondary}`}
+                type="button"
+                onClick={() => void markAllNotificationsRead()}
+                disabled={notificationLoading || notificationUnreadCount === 0}
+              >
+                전체 읽음
+              </button>
+            </div>
+
+            <div className={styles.notificationList}>
+              {notificationItems.map((item) => (
+                <article
+                  key={item.id}
+                  className={`${styles.notificationItem} ${item.isRead ? styles.notificationRead : styles.notificationUnread}`}
+                >
+                  <div className={styles.notificationTop}>
+                    <span className={styles.notificationCategory}>{item.category}</span>
+                    <span className={styles.notificationTime}>{toLocaleDateTime(item.createdAt)}</span>
+                  </div>
+                  <p className={styles.notificationTitle}>{item.title}</p>
+                  <p className={styles.notificationMessage}>{item.message}</p>
+                  <div className={styles.notificationActions}>
+                    <span className={item.isRead ? styles.readBadge : styles.unreadBadge}>
+                      {item.isRead ? "읽음" : "안읽음"}
+                    </span>
+                    <button
+                      className={`${styles.button} ${styles.secondary} ${styles.smallButton}`}
+                      type="button"
+                      disabled={notificationUpdatingId === item.id}
+                      onClick={() => void toggleNotificationRead(item)}
+                    >
+                      {notificationUpdatingId === item.id
+                        ? "처리 중..."
+                        : item.isRead
+                          ? "안읽음으로 변경"
+                          : "읽음 처리"}
+                    </button>
+                  </div>
+                </article>
+              ))}
+              {!notificationLoading && notificationItems.length === 0 && <p className={styles.emptyRow}>표시할 알림이 없습니다.</p>}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

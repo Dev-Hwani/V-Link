@@ -135,9 +135,43 @@
   background: var(--teams-danger-action-bg);
 }
 
+.smallButton {
+  padding: 7px 10px;
+  font-size: 12px;
+}
+
 .button:disabled {
   opacity: 0.55;
   cursor: default;
+}
+
+.notificationBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.notificationSummary {
+  display: grid;
+  gap: 2px;
+}
+
+.notificationCount {
+  font-size: 22px;
+  line-height: 1;
+}
+
+.notificationBadge {
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid color-mix(in srgb, var(--teams-primary) 34%, var(--teams-border));
+  background: color-mix(in srgb, var(--teams-primary) 14%, var(--teams-surface));
+  color: var(--teams-text);
 }
 
 .tableWrap {
@@ -149,7 +183,7 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 980px;
+  min-width: 1080px;
 }
 
 .table thead th {
@@ -180,6 +214,29 @@
 
 .tableRowActive {
   background: color-mix(in srgb, var(--teams-primary) 14%, transparent);
+}
+
+.tableRowUnread {
+  font-weight: 700;
+}
+
+.titleCell {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.titleUnread {
+  font-weight: 700;
+}
+
+.unreadChip {
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  background: var(--status-approved-bg);
+  color: var(--status-approved-text);
 }
 
 .statusBadge {
@@ -230,6 +287,12 @@
   padding: 20px 10px;
 }
 
+.meta {
+  margin: 8px 0 10px;
+  font-size: 13px;
+  color: var(--teams-muted);
+}
+
 .detailGrid {
   display: grid;
   gap: 10px;
@@ -250,14 +313,125 @@
   line-height: 1.45;
 }
 
-.meta {
-  margin: 6px 0 10px;
-  font-size: 13px;
+.modalBackdrop {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, #000 55%, transparent);
+  display: grid;
+  place-items: center;
+  z-index: 1000;
+  padding: 16px;
+}
+
+.modalPanel,
+.modalPanelWide {
+  width: min(900px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  border: 1px solid var(--teams-border);
+  border-radius: 12px;
+  background: var(--teams-surface);
+  box-shadow: var(--teams-shadow);
+  padding: 14px;
+}
+
+.modalPanelWide {
+  width: min(1080px, 100%);
+}
+
+.modalHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.modalHeader h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.notificationList {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.notificationItem {
+  border: 1px solid var(--teams-border);
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.notificationUnread {
+  border-color: color-mix(in srgb, var(--teams-primary) 46%, var(--teams-border));
+  background: color-mix(in srgb, var(--teams-primary) 8%, var(--teams-surface));
+}
+
+.notificationRead {
+  opacity: 0.95;
+}
+
+.notificationTop {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
   color: var(--teams-muted);
+}
+
+.notificationCategory {
+  font-weight: 700;
+}
+
+.notificationTime {
+  white-space: nowrap;
+}
+
+.notificationTitle {
+  margin: 6px 0;
+  font-size: 15px;
+}
+
+.notificationMessage {
+  margin: 0;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.notificationActions {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.readBadge,
+.unreadBadge {
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.readBadge {
+  background: var(--status-pending-bg);
+  color: var(--status-pending-text);
+}
+
+.unreadBadge {
+  background: var(--status-approved-bg);
+  color: var(--status-approved-text);
 }
 
 @media (max-width: 960px) {
   .filterGrid {
     grid-template-columns: 1fr;
+  }
+
+  .notificationBar {
+    align-items: flex-start;
   }
 }

@@ -242,6 +242,7 @@ export default function RequesterPage() {
             {requests.length === 0 && <p>등록된 요청이 없습니다.</p>}
           </div>
         </article>
+
       </section>
     </main>
   );

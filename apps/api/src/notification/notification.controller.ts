@@ -21,9 +21,19 @@ export class NotificationController {
     return this.notificationService.getUnreadCount(user.sub);
   }
 
+  @Get("unread-request-ids")
+  unreadRequestIds(@CurrentUser() user: AuthUser) {
+    return this.notificationService.getUnreadRequestIds(user.sub);
+  }
+
   @Patch(":id/read")
   markRead(@CurrentUser() user: AuthUser, @Param("id", ParseUUIDPipe) id: string) {
     return this.notificationService.markAsRead(user.sub, id);
+  }
+
+  @Patch(":id/unread")
+  markUnread(@CurrentUser() user: AuthUser, @Param("id", ParseUUIDPipe) id: string) {
+    return this.notificationService.markAsUnread(user.sub, id);
   }
 
   @Patch("read-all")
@@ -31,4 +41,3 @@ export class NotificationController {
     return this.notificationService.markAllAsRead(user.sub);
   }
 }
-

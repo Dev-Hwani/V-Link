@@ -55,11 +55,11 @@ export class RequestsController {
 
   @Get("admin/export")
   @Roles(Role.ADMIN)
-  async exportAdminTable(@Query() query: ExportAdminRequestsQueryDto, @Res({ passthrough: true }) res: Response) {
+  async exportAdminTable(@Query() query: ExportAdminRequestsQueryDto, @Res() res: Response) {
     const file = await this.requestsService.exportAdminTable(query);
     res.setHeader("Content-Type", file.mimeType);
     res.setHeader("Content-Disposition", `attachment; filename=\"${file.fileName}\"`);
-    return file.content;
+    res.send(file.content);
   }
 
   @Get(":id")

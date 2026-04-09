@@ -26,10 +26,10 @@ export class SapController {
   }
 
   @Get("backup/export")
-  async exportBackup(@Query() query: ExportSapBackupQueryDto, @Res({ passthrough: true }) res: Response) {
+  async exportBackup(@Query() query: ExportSapBackupQueryDto, @Res() res: Response) {
     const file = await this.sapService.exportBackup(query);
     res.setHeader("Content-Type", file.mimeType);
     res.setHeader("Content-Disposition", `attachment; filename=\"${file.fileName}\"`);
-    return file.content;
+    res.send(file.content);
   }
 }

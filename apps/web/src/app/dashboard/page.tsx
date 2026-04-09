@@ -32,7 +32,7 @@ interface RequestRow {
   id: string;
   title: string;
   requestType: string;
-  team: string;
+  description: string;
   status: RequestStatus;
   dueDate: string;
   createdAt: string;
@@ -47,6 +47,12 @@ interface RequestRow {
     name: string;
   } | null;
   attachmentCount: number;
+}
+
+interface AppliedDashboardFilter {
+  from: string;
+  to: string;
+  statusFilter: RequestStatus | "";
 }
 
 interface RequestTableResponse {
@@ -95,6 +101,11 @@ export default function DashboardPage() {
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState<ExportFormat | "">("");
+  const [appliedFilter, setAppliedFilter] = useState<AppliedDashboardFilter>({
+    from: range.from,
+    to: range.to,
+    statusFilter: "",
+  });
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [tableRows, setTableRows] = useState<RequestRow[]>([]);
 
@@ -146,6 +157,11 @@ export default function DashboardPage() {
 
       setSummary(summaryData);
       setTableRows(tableData.items);
+      setAppliedFilter({
+        from: currentFrom,
+        to: currentTo,
+        statusFilter: currentStatus,
+      });
       setNotice("");
     } catch (error) {
       const message = error instanceof Error ? error.message : "대시보드 조회에 실패했습니다.";
@@ -164,10 +180,10 @@ export default function DashboardPage() {
     setNotice("");
     try {
       const query = new URLSearchParams();
-      query.set("from", from);
-      query.set("to", to);
-      if (statusFilter) {
-        query.set("status", statusFilter);
+      query.set("from", appliedFilter.from);
+      query.set("to", appliedFilter.to);
+      if (appliedFilter.statusFilter) {
+        query.set("status", appliedFilter.statusFilter);
       }
       query.set("format", format);
 
@@ -396,32 +412,30 @@ export default function DashboardPage() {
                 <table className={styles.table}>
                   <thead>
                     <tr>
+                      <th>제목</th>
                       <th>상태</th>
                       <th>요청유형</th>
-                      <th>제목</th>
                       <th>요청자</th>
-                      <th>업체</th>
-                      <th>팀</th>
+                      <th>현재 배정 업체</th>
                       <th>마감일</th>
-                      <th>첨부</th>
+                      <th>상세 설명</th>
                     </tr>
                   </thead>
                   <tbody>
                     {tableRows.map((row) => (
                       <tr key={row.id}>
+                        <td>{row.title}</td>
                         <td>{requestStatusLabel(row.status)}</td>
                         <td>{requestTypeLabel(row.requestType)}</td>
-                        <td>{row.title}</td>
                         <td>{row.requester.name}</td>
                         <td>{row.assignedVendor?.name ?? "-"}</td>
-                        <td>{row.team}</td>
                         <td>{new Date(row.dueDate).toLocaleDateString()}</td>
-                        <td>{row.attachmentCount}</td>
+                        <td>{row.description || "-"}</td>
                       </tr>
                     ))}
                     {tableRows.length === 0 && (
                       <tr>
-                        <td colSpan={8} className={styles.emptyRow}>
+                        <td colSpan={7} className={styles.emptyRow}>
                           조회된 데이터가 없습니다.
                         </td>
                       </tr>
@@ -436,4 +450,3 @@ export default function DashboardPage() {
     </main>
   );
 }
-

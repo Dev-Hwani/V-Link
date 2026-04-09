@@ -51,10 +51,6 @@ interface AdminFilters {
   dueTo: string;
 }
 
-function toDateInput(date: Date) {
-  return date.toISOString().slice(0, 10);
-}
-
 function filenameFromDisposition(disposition: string | null, fallback: string) {
   if (!disposition) {
     return fallback;
@@ -109,6 +105,13 @@ export default function AdminRequestsPage() {
   const [vendorFilter, setVendorFilter] = useState("");
   const [dueFrom, setDueFrom] = useState("");
   const [dueTo, setDueTo] = useState("");
+  const [appliedFilters, setAppliedFilters] = useState<AdminFilters>({
+    search: "",
+    statusFilter: "",
+    vendorFilter: "",
+    dueFrom: "",
+    dueTo: "",
+  });
 
   const selected = useMemo(() => requests.find((item) => item.id === selectedId) ?? null, [requests, selectedId]);
   const canProcessSelected = selected?.status === "PENDING";
@@ -201,6 +204,7 @@ export default function AdminRequestsPage() {
 
       setRequests(requestData.items);
       setVendors(vendorData);
+      setAppliedFilters(filters);
 
       if (requestData.items.length > 0) {
         const target = requestData.items.some((item) => item.id === selectedId) ? selectedId : requestData.items[0].id;
@@ -231,7 +235,7 @@ export default function AdminRequestsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ vendorId: selectedVendorId }),
       });
-      await loadData(token);
+      await loadData(token, appliedFilters);
       setRejectReason("");
       setNotice("요청 승인 및 업체 배정이 완료되었습니다.");
     } catch (error) {
@@ -254,7 +258,7 @@ export default function AdminRequestsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ reason: rejectReason }),
       });
-      await loadData(token);
+      await loadData(token, appliedFilters);
       setRejectReason("");
       setNotice("요청 반려 처리가 완료되었습니다.");
     } catch (error) {
@@ -273,7 +277,7 @@ export default function AdminRequestsPage() {
     setExporting(format);
     setNotice("");
     try {
-      const query = buildQuery(currentFilters(), format);
+      const query = buildQuery(appliedFilters, format);
       const response = await fetch(`${API_BASE}/requests/admin/export?${query}`, {
         method: "GET",
         headers: {
@@ -352,7 +356,7 @@ export default function AdminRequestsPage() {
                 id="search"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
-                placeholder="제목/팀/요청자/업체"
+                placeholder="제목/요청유형/요청자/업체/설명"
               />
             </div>
             <div className={styles.field}>
@@ -387,7 +391,12 @@ export default function AdminRequestsPage() {
             </div>
           </div>
           <div className={styles.actions}>
-            <button className={styles.button} type="button" onClick={() => void loadData(token)} disabled={loading}>
+            <button
+              className={styles.button}
+              type="button"
+              onClick={() => void loadData(token, currentFilters())}
+              disabled={loading}
+            >
               {loading ? "불러오는 중..." : "필터 적용"}
             </button>
             <button
@@ -437,14 +446,13 @@ export default function AdminRequestsPage() {
             <table className={styles.table}>
               <thead>
                 <tr>
+                  <th>제목</th>
                   <th>상태</th>
                   <th>요청유형</th>
-                  <th>제목</th>
                   <th>요청자</th>
-                  <th>업체</th>
-                  <th>팀</th>
+                  <th>현재 배정 업체</th>
                   <th>마감일</th>
-                  <th>첨부</th>
+                  <th>상세 설명</th>
                 </tr>
               </thead>
               <tbody>
@@ -459,22 +467,21 @@ export default function AdminRequestsPage() {
                         setSelectedVendorId(item.assignedVendor?.id ?? "");
                       }}
                     >
+                      <td>{item.title}</td>
                       <td>
                         <span className={statusBadgeClass(item.status)}>{requestStatusLabel(item.status)}</span>
                       </td>
                       <td>{requestTypeLabel(item.requestType)}</td>
-                      <td>{item.title}</td>
                       <td>{item.requester.name}</td>
                       <td>{item.assignedVendor?.name ?? "-"}</td>
-                      <td>{item.team}</td>
                       <td>{new Date(item.dueDate).toLocaleDateString()}</td>
-                      <td>{item.attachmentCount}</td>
+                      <td className={styles.descriptionCell}>{item.description || "-"}</td>
                     </tr>
                   );
                 })}
                 {requests.length === 0 && (
                   <tr>
-                    <td colSpan={8} className={styles.emptyRow}>
+                    <td colSpan={7} className={styles.emptyRow}>
                       조회된 요청이 없습니다.
                     </td>
                   </tr>
@@ -551,7 +558,12 @@ export default function AdminRequestsPage() {
               </div>
 
               <div className={styles.actions}>
-                <button className={styles.button} type="button" onClick={() => void loadData(token)} disabled={loading}>
+                <button
+                  className={styles.button}
+                  type="button"
+                  onClick={() => void loadData(token, appliedFilters)}
+                  disabled={loading}
+                >
                   새로고침
                 </button>
                 <button

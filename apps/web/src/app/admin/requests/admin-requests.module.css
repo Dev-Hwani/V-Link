@@ -149,7 +149,7 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 900px;
+  min-width: 980px;
 }
 
 .table thead th {
@@ -215,6 +215,13 @@
 .statusRejected {
   background: var(--status-rejected-bg);
   color: var(--status-rejected-text);
+}
+
+.descriptionCell {
+  min-width: 280px;
+  max-width: 420px;
+  white-space: normal;
+  line-height: 1.45;
 }
 
 .emptyRow {

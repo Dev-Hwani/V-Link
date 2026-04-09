@@ -44,6 +44,19 @@ interface AdminRequestTableRow {
   historyCount: number;
 }
 
+const REQUEST_STATUS_EXPORT_LABEL: Record<RequestStatus, string> = {
+  PENDING: "대기",
+  APPROVED: "승인",
+  REJECTED: "반려",
+  IN_PROGRESS: "진행 중",
+  COMPLETED: "완료",
+};
+
+const REQUEST_TYPE_EXPORT_LABEL: Record<string, string> = {
+  LABELING: "라벨링",
+  REPACK: "재포장",
+};
+
 @Injectable()
 export class RequestsService {
   constructor(
@@ -540,41 +553,23 @@ export class RequestsService {
 
   private toAdminCsv(rows: AdminRequestTableRow[]) {
     const headers = [
-      "id",
-      "status",
-      "requestType",
-      "title",
-      "team",
-      "dueDate",
-      "createdAt",
-      "completedAt",
-      "requesterName",
-      "requesterEmail",
-      "vendorCode",
-      "vendorName",
-      "attachmentCount",
-      "historyCount",
-      "rejectedReason",
-      "description",
+      "제목",
+      "상태",
+      "요청 유형",
+      "요청자",
+      "현재 배정 업체",
+      "마감일",
+      "상세 설명",
     ];
 
     const lines = rows.map((row) =>
       [
-        row.id,
-        row.status,
-        row.requestType,
         row.title,
-        row.team,
-        row.dueDate,
-        row.createdAt,
-        row.completedAt,
+        this.requestStatusLabel(row.status),
+        this.requestTypeLabel(row.requestType),
         row.requester.name,
-        row.requester.email,
-        row.assignedVendor?.code ?? "",
         row.assignedVendor?.name ?? "",
-        String(row.attachmentCount),
-        String(row.historyCount),
-        row.rejectedReason,
+        this.formatDateForExport(row.dueDate),
         row.description,
       ]
         .map((value) => `"${String(value).replaceAll("\"", "\"\"")}"`)
@@ -589,47 +584,51 @@ export class RequestsService {
     const sheet = workbook.addWorksheet("vas-requests");
 
     sheet.columns = [
-      { header: "ID", key: "id", width: 38 },
+      { header: "제목", key: "title", width: 42 },
       { header: "상태", key: "status", width: 14 },
       { header: "요청유형", key: "requestType", width: 16 },
-      { header: "제목", key: "title", width: 34 },
-      { header: "팀", key: "team", width: 16 },
-      { header: "마감일", key: "dueDate", width: 24 },
-      { header: "생성일", key: "createdAt", width: 24 },
-      { header: "완료일", key: "completedAt", width: 24 },
-      { header: "요청자", key: "requesterName", width: 18 },
-      { header: "요청자 이메일", key: "requesterEmail", width: 28 },
-      { header: "업체코드", key: "vendorCode", width: 16 },
-      { header: "업체명", key: "vendorName", width: 20 },
-      { header: "첨부수", key: "attachmentCount", width: 10 },
-      { header: "상태이력수", key: "historyCount", width: 12 },
-      { header: "반려사유", key: "rejectedReason", width: 40 },
-      { header: "설명", key: "description", width: 48 },
+      { header: "요청자", key: "requesterName", width: 22 },
+      { header: "현재 배정 업체", key: "vendorName", width: 22 },
+      { header: "마감일", key: "dueDate", width: 14 },
+      { header: "상세 설명", key: "description", width: 52 },
     ];
+
+    sheet.views = [{ state: "frozen", ySplit: 1 }];
+    sheet.autoFilter = "A1:G1";
 
     rows.forEach((row) => {
       sheet.addRow({
-        id: row.id,
-        status: row.status,
-        requestType: row.requestType,
         title: row.title,
-        team: row.team,
-        dueDate: row.dueDate,
-        createdAt: row.createdAt,
-        completedAt: row.completedAt,
+        status: this.requestStatusLabel(row.status),
+        requestType: this.requestTypeLabel(row.requestType),
         requesterName: row.requester.name,
-        requesterEmail: row.requester.email,
-        vendorCode: row.assignedVendor?.code ?? "",
         vendorName: row.assignedVendor?.name ?? "",
-        attachmentCount: row.attachmentCount,
-        historyCount: row.historyCount,
-        rejectedReason: row.rejectedReason,
+        dueDate: this.formatDateForExport(row.dueDate),
         description: row.description,
       });
     });
 
+    sheet.getRow(1).font = { bold: true };
+    sheet.getColumn("description").alignment = { vertical: "top", wrapText: true };
+
     const buffer = await workbook.xlsx.writeBuffer();
     return Buffer.isBuffer(buffer) ? buffer : Buffer.from(buffer as ArrayBuffer);
+  }
+
+  private requestStatusLabel(status: RequestStatus) {
+    return REQUEST_STATUS_EXPORT_LABEL[status] ?? status;
+  }
+
+  private requestTypeLabel(requestType: string) {
+    return REQUEST_TYPE_EXPORT_LABEL[requestType] ?? requestType;
+  }
+
+  private formatDateForExport(isoDate: string) {
+    const date = new Date(isoDate);
+    if (Number.isNaN(date.getTime())) {
+      return isoDate;
+    }
+    return date.toISOString().slice(0, 10);
   }
 }
 

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
+import { API_BASE } from "../lib/api";
 import { roleLabel } from "../lib/display";
 import { clearSession, getSession, type SessionData } from "../lib/session";
 
@@ -66,27 +67,72 @@ export function AppNav() {
   const pathname = usePathname();
   const [session, setSession] = useState<SessionData | null>(null);
   const [theme, setTheme] = useState<ThemeMode>("light");
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     const syncSession = () => setSession(getSession());
+    const syncUnread = () => {
+      const current = getSession();
+      if (!current) {
+        setUnreadCount(0);
+        return;
+      }
+      void fetchUnreadCount(current.accessToken).then((count) => setUnreadCount(count));
+    };
+
     syncSession();
 
     const currentTheme = document.documentElement.dataset.theme;
     setTheme(currentTheme === "dark" ? "dark" : "light");
 
     window.addEventListener("storage", syncSession);
+    window.addEventListener("vlink-notification-updated", syncUnread);
+
     return () => {
       window.removeEventListener("storage", syncSession);
+      window.removeEventListener("vlink-notification-updated", syncUnread);
     };
   }, []);
 
   useEffect(() => {
-    setSession(getSession());
+    const current = getSession();
+    setSession(current);
+    if (!current) {
+      setUnreadCount(0);
+      return;
+    }
+    void fetchUnreadCount(current.accessToken).then((count) => setUnreadCount(count));
   }, [pathname]);
+
+  useEffect(() => {
+    if (!session) {
+      setUnreadCount(0);
+      return;
+    }
+
+    let active = true;
+    const pull = async () => {
+      const count = await fetchUnreadCount(session.accessToken);
+      if (active) {
+        setUnreadCount(count);
+      }
+    };
+
+    void pull();
+    const timer = window.setInterval(() => {
+      void pull();
+    }, 30000);
+
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [session?.accessToken]);
 
   function onLogout() {
     clearSession();
     setSession(null);
+    setUnreadCount(0);
     router.push("/login");
     router.refresh();
   }
@@ -108,18 +154,27 @@ export function AppNav() {
   const roleMenus: MenuItem[] =
     session?.user.role === "ADMIN"
       ? [
-          { href: "/admin/requests", label: "작업", icon: "workspace" },
+          { href: "/admin/requests", label: "요청한 작업", icon: "workspace" },
           { href: "/dashboard", label: "대시보드", icon: "dashboard" },
           { href: "/calendar", label: "캘린더", icon: "calendar" },
         ]
       : session?.user.role === "REQUESTER"
         ? [
-            { href: "/requester", label: "작업", icon: "workspace" },
+            { href: "/requester", label: "요청한 작업", icon: "workspace" },
             { href: "/calendar", label: "캘린더", icon: "calendar" },
           ]
         : session?.user.role === "VENDOR"
-          ? [{ href: "/vendor", label: "작업", icon: "workspace" }]
+          ? [{ href: "/vendor", label: "요청한 작업", icon: "workspace" }]
           : [];
+
+  const homePath =
+    session?.user.role === "ADMIN"
+      ? "/admin/requests"
+      : session?.user.role === "REQUESTER"
+        ? "/requester"
+        : session?.user.role === "VENDOR"
+          ? "/vendor"
+          : "";
 
   return (
     <nav className="app-nav">
@@ -156,7 +211,12 @@ export function AppNav() {
                 <span className="app-nav-icon">
                   <NavIcon name={menu.icon} />
                 </span>
-                <span className="app-nav-label">{menu.label}</span>
+                <span className="app-nav-label">
+                  {menu.label}
+                  {menu.href === homePath && unreadCount > 0 && (
+                    <span className="app-nav-badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
+                  )}
+                </span>
               </Link>
             ))}
           </div>
@@ -176,4 +236,24 @@ export function AppNav() {
       )}
     </nav>
   );
+}
+
+async function fetchUnreadCount(accessToken: string) {
+  try {
+    const response = await fetch(`${API_BASE}/notifications/unread-count`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+      cache: "no-store",
+    });
+
+    if (!response.ok) {
+      return 0;
+    }
+
+    const data = (await response.json()) as { count?: number };
+    return typeof data.count === "number" ? data.count : 0;
+  } catch {
+    return 0;
+  }
 }

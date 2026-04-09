@@ -214,6 +214,14 @@ export class NotificationService {
     return { updatedCount: result.count };
   }
 
+  async markRequestNotificationsAsRead(userId: string, requestId: string) {
+    return this.setRequestNotificationReadState(userId, requestId, true);
+  }
+
+  async markRequestNotificationsAsUnread(userId: string, requestId: string) {
+    return this.setRequestNotificationReadState(userId, requestId, false);
+  }
+
   private async sendAllChannels(payload: { title: string; message: string; data: unknown }) {
     const tasks: Array<Promise<void>> = [];
     tasks.push(this.sendEmail(payload.title, payload.message));
@@ -422,5 +430,41 @@ export class NotificationService {
 
     const requestId = (payload as Record<string, unknown>).requestId;
     return typeof requestId === "string" && requestId.length > 0 ? requestId : null;
+  }
+
+  private async setRequestNotificationReadState(userId: string, requestId: string, isRead: boolean) {
+    const rows = await this.prisma.appNotification.findMany({
+      where: {
+        userId,
+      },
+      select: {
+        id: true,
+        isRead: true,
+        payload: true,
+      },
+    });
+
+    const targetIds = rows
+      .filter((row) => this.extractRequestId(row.payload) === requestId)
+      .filter((row) => row.isRead !== isRead)
+      .map((row) => row.id);
+
+    if (targetIds.length === 0) {
+      return { updatedCount: 0 };
+    }
+
+    const result = await this.prisma.appNotification.updateMany({
+      where: {
+        id: {
+          in: targetIds,
+        },
+      },
+      data: {
+        isRead,
+        readAt: isRead ? new Date() : null,
+      },
+    });
+
+    return { updatedCount: result.count };
   }
 }

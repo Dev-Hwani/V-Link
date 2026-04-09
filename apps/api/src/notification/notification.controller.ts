@@ -36,6 +36,16 @@ export class NotificationController {
     return this.notificationService.markAsUnread(user.sub, id);
   }
 
+  @Patch("request/:requestId/read")
+  markRequestRead(@CurrentUser() user: AuthUser, @Param("requestId", ParseUUIDPipe) requestId: string) {
+    return this.notificationService.markRequestNotificationsAsRead(user.sub, requestId);
+  }
+
+  @Patch("request/:requestId/unread")
+  markRequestUnread(@CurrentUser() user: AuthUser, @Param("requestId", ParseUUIDPipe) requestId: string) {
+    return this.notificationService.markRequestNotificationsAsUnread(user.sub, requestId);
+  }
+
   @Patch("read-all")
   markAllRead(@CurrentUser() user: AuthUser) {
     return this.notificationService.markAllAsRead(user.sub);

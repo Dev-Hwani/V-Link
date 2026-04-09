@@ -53,6 +53,12 @@ export class RequestsController {
     return this.requestsService.listAdminTable(query);
   }
 
+  @Get("admin/pending-count")
+  @Roles(Role.ADMIN)
+  getAdminPendingCount() {
+    return this.requestsService.getAdminPendingCount();
+  }
+
   @Get("admin/export")
   @Roles(Role.ADMIN)
   async exportAdminTable(@Query() query: ExportAdminRequestsQueryDto, @Res() res: Response) {

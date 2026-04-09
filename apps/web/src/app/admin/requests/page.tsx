@@ -51,11 +51,6 @@ interface AdminFilters {
   dueTo: string;
 }
 
-interface UnreadRequestState {
-  count: number;
-  requestIds: string[];
-}
-
 function filenameFromDisposition(disposition: string | null, fallback: string) {
   if (!disposition) {
     return fallback;
@@ -120,14 +115,12 @@ export default function AdminRequestsPage() {
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState<ExportFormat | "">("");
-  const [requestReadUpdatingId, setRequestReadUpdatingId] = useState("");
 
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<RequestStatus | "">("");
   const [vendorFilter, setVendorFilter] = useState("");
   const [dueFrom, setDueFrom] = useState("");
   const [dueTo, setDueTo] = useState("");
-  const [unreadOnly, setUnreadOnly] = useState(false);
   const [appliedFilters, setAppliedFilters] = useState<AdminFilters>({
     search: "",
     statusFilter: "",
@@ -137,19 +130,9 @@ export default function AdminRequestsPage() {
   });
 
   const [processModalOpen, setProcessModalOpen] = useState(false);
-  const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
-  const [unreadRequestIds, setUnreadRequestIds] = useState<string[]>([]);
 
   const selected = useMemo(() => requests.find((item) => item.id === selectedId) ?? null, [requests, selectedId]);
   const canProcessSelected = selected?.status === "PENDING";
-  const unreadRequestIdSet = useMemo(() => new Set(unreadRequestIds), [unreadRequestIds]);
-
-  const displayedRequests = useMemo(() => {
-    if (!unreadOnly) {
-      return requests;
-    }
-    return requests.filter((item) => unreadRequestIdSet.has(item.id));
-  }, [requests, unreadOnly, unreadRequestIdSet]);
 
   const summary = useMemo(() => {
     const base = {
@@ -244,17 +227,9 @@ export default function AdminRequestsPage() {
     return { search, statusFilter, vendorFilter, dueFrom, dueTo };
   }
 
-  async function refreshUnreadState(currentToken: string) {
-    const unread = await apiJson<UnreadRequestState>("/notifications/unread-request-ids", currentToken, { method: "GET" });
-    setNotificationUnreadCount(unread.count ?? 0);
-    setUnreadRequestIds(Array.isArray(unread.requestIds) ? unread.requestIds : []);
-    window.dispatchEvent(new Event("vlink-notification-updated"));
-  }
-
   async function loadData(currentToken: string, filters = currentFilters()) {
     setLoading(true);
     setNotice("");
-
     try {
       const query = buildQuery(filters);
       const [requestData, vendorData] = await Promise.all([
@@ -265,7 +240,6 @@ export default function AdminRequestsPage() {
       setRequests(requestData.items);
       setVendors(vendorData);
       setAppliedFilters(filters);
-      await refreshUnreadState(currentToken);
 
       if (requestData.items.length > 0) {
         const targetId = requestData.items.some((item) => item.id === selectedId) ? selectedId : requestData.items[0].id;
@@ -276,6 +250,8 @@ export default function AdminRequestsPage() {
         setSelectedId("");
         setSelectedVendorId("");
       }
+
+      window.dispatchEvent(new Event("vlink-pending-count-updated"));
     } catch (error) {
       const message = error instanceof Error ? error.message : "데이터 조회에 실패했습니다.";
       setNotice(message);
@@ -307,6 +283,7 @@ export default function AdminRequestsPage() {
       await loadData(token, appliedFilters);
       setProcessModalOpen(false);
       setNotice("요청 승인 및 업체 배정을 완료했습니다.");
+      window.dispatchEvent(new Event("vlink-pending-count-updated"));
     } catch (error) {
       const message = error instanceof Error ? error.message : "요청 승인에 실패했습니다.";
       setNotice(message);
@@ -332,6 +309,7 @@ export default function AdminRequestsPage() {
       setProcessModalOpen(false);
       setRejectReason("");
       setNotice("요청 반려를 완료했습니다.");
+      window.dispatchEvent(new Event("vlink-pending-count-updated"));
     } catch (error) {
       const message = error instanceof Error ? error.message : "요청 반려에 실패했습니다.";
       setNotice(message);
@@ -381,57 +359,18 @@ export default function AdminRequestsPage() {
     }
   }
 
-  async function markAllNotificationsRead() {
-    if (!token || notificationUnreadCount === 0) {
-      return;
-    }
-
-    setLoading(true);
-    setNotice("");
-    try {
-      await apiJson("/notifications/read-all", token, { method: "PATCH" });
-      await refreshUnreadState(token);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "전체 읽음 처리에 실패했습니다.";
-      setNotice(message);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function setRequestReadState(requestId: string, nextRead: boolean) {
-    if (!token) {
-      return;
-    }
-
-    setRequestReadUpdatingId(requestId);
-    setNotice("");
-    try {
-      const path = nextRead
-        ? `/notifications/request/${requestId}/read`
-        : `/notifications/request/${requestId}/unread`;
-      await apiJson(path, token, { method: "PATCH" });
-      await refreshUnreadState(token);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "읽음 상태 변경에 실패했습니다.";
-      setNotice(message);
-    } finally {
-      setRequestReadUpdatingId("");
-    }
-  }
-
   return (
     <main className={styles.page}>
       <header className={styles.header}>
         <h1 className={styles.title}>관리자 작업 화면</h1>
-        <p className={styles.subtitle}>요청 목록에서 읽음 상태를 바로 관리하고 모달에서 승인/반려를 처리합니다.</p>
+        <p className={styles.subtitle}>승인 대기 요청을 중심으로 필터링하고 승인/반려를 처리합니다.</p>
       </header>
 
       {notice && <div className={styles.notice}>{notice}</div>}
 
       <section className={styles.summaryRow}>
         <article className={styles.summaryCard}>
-          <span className={styles.summaryLabel}>조회 건수</span>
+          <span className={styles.summaryLabel}>필터 결과 건수</span>
           <strong>{summary.total}</strong>
         </article>
         <article className={styles.summaryCard}>
@@ -546,35 +485,11 @@ export default function AdminRequestsPage() {
         </article>
 
         <article className={styles.card}>
-          <div className={styles.notificationBar}>
-            <div className={styles.notificationSummary}>
-              <span className={styles.summaryLabel}>안읽음 알림</span>
-              <strong className={styles.notificationCount}>{notificationUnreadCount}</strong>
-            </div>
-            <div className={styles.actions}>
-              <button className={`${styles.button} ${styles.secondary}`} type="button" onClick={() => setUnreadOnly((prev) => !prev)}>
-                {unreadOnly ? "전체 보기" : "안읽음만 보기"}
-              </button>
-              <button
-                className={`${styles.button} ${styles.secondary}`}
-                type="button"
-                onClick={() => void markAllNotificationsRead()}
-                disabled={loading || notificationUnreadCount === 0}
-              >
-                전체 읽음
-              </button>
-              <button
-                className={`${styles.button} ${styles.secondary}`}
-                type="button"
-                onClick={() => void refreshUnreadState(token)}
-                disabled={loading}
-              >
-                알림 새로고침
-              </button>
-            </div>
+          <div className={styles.tableHeader}>
+            <h2 className={styles.sectionTitle}>요청 상세 표</h2>
+            <p className={styles.tableCount}>현재 조회: {requests.length}건</p>
           </div>
 
-          <h2 className={styles.sectionTitle}>요청 상세 표</h2>
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead>
@@ -586,28 +501,19 @@ export default function AdminRequestsPage() {
                   <th>현재 배정 업체</th>
                   <th>마감일</th>
                   <th>상세 설명</th>
-                  <th>읽음 처리</th>
                   <th>처리</th>
                 </tr>
               </thead>
               <tbody>
-                {displayedRequests.map((item) => {
+                {requests.map((item) => {
                   const active = item.id === selectedId;
-                  const isUnread = unreadRequestIdSet.has(item.id);
                   return (
                     <tr
                       key={item.id}
-                      className={`${styles.tableRow} ${active ? styles.tableRowActive : ""} ${
-                        isUnread ? styles.tableRowUnread : ""
-                      }`}
+                      className={`${styles.tableRow} ${active ? styles.tableRowActive : ""}`}
                       onClick={() => openProcessModal(item)}
                     >
-                      <td>
-                        <div className={styles.titleCell}>
-                          <span className={isUnread ? styles.titleUnread : undefined}>{item.title}</span>
-                          {isUnread && <span className={styles.unreadChip}>안읽음</span>}
-                        </div>
-                      </td>
+                      <td>{item.title}</td>
                       <td>
                         <span className={statusBadgeClass(item.status)}>{requestStatusLabel(item.status)}</span>
                       </td>
@@ -616,19 +522,6 @@ export default function AdminRequestsPage() {
                       <td>{item.assignedVendor?.name ?? "-"}</td>
                       <td>{toLocaleDate(item.dueDate)}</td>
                       <td className={styles.descriptionCell}>{item.description || "-"}</td>
-                      <td>
-                        <button
-                          className={`${styles.button} ${styles.secondary} ${styles.smallButton}`}
-                          type="button"
-                          disabled={requestReadUpdatingId === item.id}
-                          onClick={(event) => {
-                            event.stopPropagation();
-                            void setRequestReadState(item.id, isUnread);
-                          }}
-                        >
-                          {requestReadUpdatingId === item.id ? "처리 중..." : isUnread ? "읽음 처리" : "안읽음 처리"}
-                        </button>
-                      </td>
                       <td>
                         <button
                           className={`${styles.button} ${styles.secondary} ${styles.smallButton}`}
@@ -644,10 +537,10 @@ export default function AdminRequestsPage() {
                     </tr>
                   );
                 })}
-                {displayedRequests.length === 0 && (
+                {requests.length === 0 && (
                   <tr>
-                    <td colSpan={9} className={styles.emptyRow}>
-                      {unreadOnly ? "안읽음 요청이 없습니다." : "조회된 요청이 없습니다."}
+                    <td colSpan={8} className={styles.emptyRow}>
+                      조회된 요청이 없습니다.
                     </td>
                   </tr>
                 )}

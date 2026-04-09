@@ -153,6 +153,16 @@ export class RequestsService {
     };
   }
 
+  async getAdminPendingCount() {
+    const count = await this.prisma.vasRequest.count({
+      where: {
+        status: RequestStatus.PENDING,
+      },
+    });
+
+    return { count };
+  }
+
   async exportAdminTable(query: ExportAdminRequestsQueryDto) {
     const format = query.format ?? AdminRequestExportFormat.XLSX;
     const rows = await this.findAdminTableRows(query, 5000);

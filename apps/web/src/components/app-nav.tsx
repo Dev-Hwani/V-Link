@@ -67,17 +67,17 @@ export function AppNav() {
   const pathname = usePathname();
   const [session, setSession] = useState<SessionData | null>(null);
   const [theme, setTheme] = useState<ThemeMode>("light");
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [pendingCount, setPendingCount] = useState(0);
 
   useEffect(() => {
     const syncSession = () => setSession(getSession());
-    const syncUnread = () => {
+    const syncPending = () => {
       const current = getSession();
-      if (!current) {
-        setUnreadCount(0);
+      if (!current || current.user.role !== "ADMIN") {
+        setPendingCount(0);
         return;
       }
-      void fetchUnreadCount(current.accessToken).then((count) => setUnreadCount(count));
+      void fetchPendingCount(current.accessToken).then((count) => setPendingCount(count));
     };
 
     syncSession();
@@ -86,35 +86,34 @@ export function AppNav() {
     setTheme(currentTheme === "dark" ? "dark" : "light");
 
     window.addEventListener("storage", syncSession);
-    window.addEventListener("vlink-notification-updated", syncUnread);
-
+    window.addEventListener("vlink-pending-count-updated", syncPending);
     return () => {
       window.removeEventListener("storage", syncSession);
-      window.removeEventListener("vlink-notification-updated", syncUnread);
+      window.removeEventListener("vlink-pending-count-updated", syncPending);
     };
   }, []);
 
   useEffect(() => {
     const current = getSession();
     setSession(current);
-    if (!current) {
-      setUnreadCount(0);
+    if (!current || current.user.role !== "ADMIN") {
+      setPendingCount(0);
       return;
     }
-    void fetchUnreadCount(current.accessToken).then((count) => setUnreadCount(count));
+    void fetchPendingCount(current.accessToken).then((count) => setPendingCount(count));
   }, [pathname]);
 
   useEffect(() => {
-    if (!session) {
-      setUnreadCount(0);
+    if (!session || session.user.role !== "ADMIN") {
+      setPendingCount(0);
       return;
     }
 
     let active = true;
     const pull = async () => {
-      const count = await fetchUnreadCount(session.accessToken);
+      const count = await fetchPendingCount(session.accessToken);
       if (active) {
-        setUnreadCount(count);
+        setPendingCount(count);
       }
     };
 
@@ -127,12 +126,12 @@ export function AppNav() {
       active = false;
       window.clearInterval(timer);
     };
-  }, [session?.accessToken]);
+  }, [session?.accessToken, session?.user.role]);
 
   function onLogout() {
     clearSession();
     setSession(null);
-    setUnreadCount(0);
+    setPendingCount(0);
     router.push("/login");
     router.refresh();
   }
@@ -213,8 +212,8 @@ export function AppNav() {
                 </span>
                 <span className="app-nav-label">
                   {menu.label}
-                  {menu.href === homePath && unreadCount > 0 && (
-                    <span className="app-nav-badge">{unreadCount > 99 ? "99+" : unreadCount}</span>
+                  {session.user.role === "ADMIN" && menu.href === homePath && pendingCount > 0 && (
+                    <span className="app-nav-badge">{pendingCount > 99 ? "99+" : pendingCount}</span>
                   )}
                 </span>
               </Link>
@@ -238,9 +237,9 @@ export function AppNav() {
   );
 }
 
-async function fetchUnreadCount(accessToken: string) {
+async function fetchPendingCount(accessToken: string) {
   try {
-    const response = await fetch(`${API_BASE}/notifications/unread-count`, {
+    const response = await fetch(`${API_BASE}/requests/admin/pending-count`, {
       headers: {
         Authorization: `Bearer ${accessToken}`,
       },

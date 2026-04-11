@@ -4,7 +4,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "./dashboard.module.css";
-import { API_BASE, ApiRequestError, apiJson } from "../../lib/api";
+import { ApiRequestError, apiFetch, apiJson } from "../../lib/api";
 import { requestStatusLabel, requestTypeLabel, sapStatusLabel } from "../../lib/display";
 import { REQUESTS_UPDATED_EVENT, REQUESTS_UPDATED_STORAGE_KEY } from "../../lib/realtime";
 import { clearSession, getRoleHome, getSession } from "../../lib/session";
@@ -239,12 +239,8 @@ export default function DashboardPage() {
       }
       query.set("format", format);
 
-      const response = await fetch(`${API_BASE}/dashboard/export?${query.toString()}`, {
+      const response = await apiFetch(`/dashboard/export?${query.toString()}`, token, {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        cache: "no-store",
       });
 
       if (!response.ok) {

@@ -9,10 +9,12 @@ export interface SessionUser {
 
 export interface SessionData {
   accessToken: string;
+  refreshToken: string;
   user: SessionUser;
 }
 
 const STORAGE_KEY = "vlink_session";
+export const SESSION_UPDATED_EVENT = "vlink-session-updated";
 
 export function getSession(): SessionData | null {
   if (typeof window === "undefined") {
@@ -26,7 +28,7 @@ export function getSession(): SessionData | null {
 
   try {
     const parsed = JSON.parse(raw) as SessionData;
-    if (!parsed.accessToken || !parsed.user?.role) {
+    if (!parsed.accessToken || !parsed.refreshToken || !parsed.user?.role) {
       return null;
     }
     return parsed;
@@ -40,6 +42,7 @@ export function setSession(session: SessionData) {
     return;
   }
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(session));
+  window.dispatchEvent(new Event(SESSION_UPDATED_EVENT));
 }
 
 export function clearSession() {
@@ -47,6 +50,7 @@ export function clearSession() {
     return;
   }
   window.localStorage.removeItem(STORAGE_KEY);
+  window.dispatchEvent(new Event(SESSION_UPDATED_EVENT));
 }
 
 export function getRoleHome(role: UserRole) {
@@ -58,4 +62,3 @@ export function getRoleHome(role: UserRole) {
   }
   return "/vendor";
 }
-

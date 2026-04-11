@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "./requester.module.css";
-import { API_BASE, apiJson } from "../../lib/api";
+import { apiFetch, apiJson } from "../../lib/api";
 import { requestStatusLabel, requestTypeLabel } from "../../lib/display";
 import { notifyPendingCountUpdated, notifyRequestsUpdated } from "../../lib/realtime";
 import { getRoleHome, getSession } from "../../lib/session";
@@ -148,11 +148,8 @@ export default function RequesterPage() {
       if (file) {
         const form = new FormData();
         form.append("file", file);
-        const uploadResponse = await fetch(`${API_BASE}/requests/${created.id}/attachments`, {
+        const uploadResponse = await apiFetch(`/requests/${created.id}/attachments`, token, {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
           body: form,
         });
 

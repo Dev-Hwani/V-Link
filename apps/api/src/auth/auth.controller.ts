@@ -6,6 +6,8 @@ import { Roles } from "../common/decorators/roles.decorator";
 import { RolesGuard } from "../common/guards/roles.guard";
 import { AuthUser } from "../common/interfaces/auth-user.interface";
 import { LoginDto } from "./dto/login.dto";
+import { LogoutDto } from "./dto/logout.dto";
+import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { SignupDto } from "./dto/signup.dto";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
@@ -23,6 +25,16 @@ export class AuthController {
   @Post("signup")
   signup(@Body() dto: SignupDto) {
     return this.authService.signupRequester(dto);
+  }
+
+  @Post("refresh")
+  refresh(@Body() dto: RefreshTokenDto) {
+    return this.authService.refresh(dto);
+  }
+
+  @Post("logout")
+  logout(@Body() dto: LogoutDto) {
+    return this.authService.logout(dto);
   }
 
   @Post("register")

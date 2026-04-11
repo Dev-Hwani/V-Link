@@ -4,10 +4,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-import { API_BASE } from "../lib/api";
+import { API_BASE, apiJson } from "../lib/api";
 import { roleLabel } from "../lib/display";
 import { PENDING_COUNT_UPDATED_EVENT, PENDING_COUNT_UPDATED_STORAGE_KEY } from "../lib/realtime";
-import { clearSession, getSession, type SessionData } from "../lib/session";
+import { SESSION_UPDATED_EVENT, clearSession, getSession, type SessionData } from "../lib/session";
 
 type ThemeMode = "light" | "dark";
 type MenuIconName = "workspace" | "dashboard" | "calendar" | "login" | "signup";
@@ -94,9 +94,11 @@ export function AppNav() {
 
     window.addEventListener("storage", onStorage);
     window.addEventListener(PENDING_COUNT_UPDATED_EVENT, syncPending);
+    window.addEventListener(SESSION_UPDATED_EVENT, syncSession);
     return () => {
       window.removeEventListener("storage", onStorage);
       window.removeEventListener(PENDING_COUNT_UPDATED_EVENT, syncPending);
+      window.removeEventListener(SESSION_UPDATED_EVENT, syncSession);
     };
   }, []);
 
@@ -135,7 +137,24 @@ export function AppNav() {
     };
   }, [session?.accessToken, session?.user.role]);
 
-  function onLogout() {
+  async function onLogout() {
+    const current = getSession();
+    if (current?.refreshToken) {
+      try {
+        await fetch(`${API_BASE}/auth/logout`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            refreshToken: current.refreshToken,
+          }),
+        });
+      } catch {
+        // ignore logout request failures and clear local session anyway
+      }
+    }
+
     clearSession();
     setSession(null);
     setPendingCount(0);
@@ -246,18 +265,9 @@ export function AppNav() {
 
 async function fetchPendingCount(accessToken: string) {
   try {
-    const response = await fetch(`${API_BASE}/requests/admin/pending-count`, {
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-      },
-      cache: "no-store",
+    const data = await apiJson<{ count?: number }>("/requests/admin/pending-count", accessToken, {
+      method: "GET",
     });
-
-    if (!response.ok) {
-      return 0;
-    }
-
-    const data = (await response.json()) as { count?: number };
     return typeof data.count === "number" ? data.count : 0;
   } catch {
     return 0;

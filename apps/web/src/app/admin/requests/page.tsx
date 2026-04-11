@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "./admin-requests.module.css";
-import { API_BASE, apiJson } from "../../../lib/api";
+import { apiFetch, apiJson } from "../../../lib/api";
 import { requestStatusLabel, requestTypeLabel } from "../../../lib/display";
 import { notifyPendingCountUpdated, notifyRequestsUpdated } from "../../../lib/realtime";
 import { getRoleHome, getSession } from "../../../lib/session";
@@ -330,12 +330,8 @@ export default function AdminRequestsPage() {
     setNotice("");
     try {
       const query = buildQuery(appliedFilters, format);
-      const response = await fetch(`${API_BASE}/requests/admin/export?${query}`, {
+      const response = await apiFetch(`/requests/admin/export?${query}`, token, {
         method: "GET",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        cache: "no-store",
       });
 
       if (!response.ok) {

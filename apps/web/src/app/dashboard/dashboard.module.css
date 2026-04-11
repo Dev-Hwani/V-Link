@@ -21,6 +21,13 @@
   color: var(--teams-muted);
 }
 
+.syncText {
+  margin-top: 4px;
+  margin-bottom: 0;
+  font-size: 12px;
+  color: var(--teams-muted);
+}
+
 .card {
   border: 1px solid var(--teams-border);
   border-radius: 12px;

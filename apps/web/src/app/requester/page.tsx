@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import styles from "./requester.module.css";
 import { API_BASE, apiJson } from "../../lib/api";
 import { requestStatusLabel, requestTypeLabel } from "../../lib/display";
+import { notifyPendingCountUpdated, notifyRequestsUpdated } from "../../lib/realtime";
 import { getRoleHome, getSession } from "../../lib/session";
 
 type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "IN_PROGRESS" | "COMPLETED";
@@ -134,6 +135,8 @@ export default function RequesterPage() {
       setDescription("");
       setFile(null);
       setNotice("요청이 등록되었습니다.");
+      notifyRequestsUpdated();
+      notifyPendingCountUpdated();
     } catch (error) {
       const message = error instanceof Error ? error.message : "요청 등록에 실패했습니다.";
       setNotice(message);

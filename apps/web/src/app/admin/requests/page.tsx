@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import styles from "./admin-requests.module.css";
 import { API_BASE, apiJson } from "../../../lib/api";
 import { requestStatusLabel, requestTypeLabel } from "../../../lib/display";
+import { notifyPendingCountUpdated, notifyRequestsUpdated } from "../../../lib/realtime";
 import { getRoleHome, getSession } from "../../../lib/session";
 
 type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "IN_PROGRESS" | "COMPLETED";
@@ -251,7 +252,7 @@ export default function AdminRequestsPage() {
         setSelectedVendorId("");
       }
 
-      window.dispatchEvent(new Event("vlink-pending-count-updated"));
+      notifyPendingCountUpdated();
     } catch (error) {
       const message = error instanceof Error ? error.message : "데이터 조회에 실패했습니다.";
       setNotice(message);
@@ -283,7 +284,8 @@ export default function AdminRequestsPage() {
       await loadData(token, appliedFilters);
       setProcessModalOpen(false);
       setNotice("요청 승인 및 업체 배정을 완료했습니다.");
-      window.dispatchEvent(new Event("vlink-pending-count-updated"));
+      notifyPendingCountUpdated();
+      notifyRequestsUpdated();
     } catch (error) {
       const message = error instanceof Error ? error.message : "요청 승인에 실패했습니다.";
       setNotice(message);
@@ -309,7 +311,8 @@ export default function AdminRequestsPage() {
       setProcessModalOpen(false);
       setRejectReason("");
       setNotice("요청 반려를 완료했습니다.");
-      window.dispatchEvent(new Event("vlink-pending-count-updated"));
+      notifyPendingCountUpdated();
+      notifyRequestsUpdated();
     } catch (error) {
       const message = error instanceof Error ? error.message : "요청 반려에 실패했습니다.";
       setNotice(message);

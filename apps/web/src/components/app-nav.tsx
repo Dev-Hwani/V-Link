@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 
 import { API_BASE } from "../lib/api";
 import { roleLabel } from "../lib/display";
+import { PENDING_COUNT_UPDATED_EVENT, PENDING_COUNT_UPDATED_STORAGE_KEY } from "../lib/realtime";
 import { clearSession, getSession, type SessionData } from "../lib/session";
 
 type ThemeMode = "light" | "dark";
@@ -79,17 +80,23 @@ export function AppNav() {
       }
       void fetchPendingCount(current.accessToken).then((count) => setPendingCount(count));
     };
+    const onStorage = (event: StorageEvent) => {
+      syncSession();
+      if (event.key === PENDING_COUNT_UPDATED_STORAGE_KEY) {
+        syncPending();
+      }
+    };
 
     syncSession();
 
     const currentTheme = document.documentElement.dataset.theme;
     setTheme(currentTheme === "dark" ? "dark" : "light");
 
-    window.addEventListener("storage", syncSession);
-    window.addEventListener("vlink-pending-count-updated", syncPending);
+    window.addEventListener("storage", onStorage);
+    window.addEventListener(PENDING_COUNT_UPDATED_EVENT, syncPending);
     return () => {
-      window.removeEventListener("storage", syncSession);
-      window.removeEventListener("vlink-pending-count-updated", syncPending);
+      window.removeEventListener("storage", onStorage);
+      window.removeEventListener(PENDING_COUNT_UPDATED_EVENT, syncPending);
     };
   }, []);
 

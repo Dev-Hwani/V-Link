@@ -4,9 +4,10 @@ import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import styles from "./dashboard.module.css";
-import { API_BASE, apiJson } from "../../lib/api";
+import { API_BASE, ApiRequestError, apiJson } from "../../lib/api";
 import { requestStatusLabel, requestTypeLabel, sapStatusLabel } from "../../lib/display";
-import { getRoleHome, getSession } from "../../lib/session";
+import { REQUESTS_UPDATED_EVENT, REQUESTS_UPDATED_STORAGE_KEY } from "../../lib/realtime";
+import { clearSession, getRoleHome, getSession } from "../../lib/session";
 
 type RequestStatus = "PENDING" | "APPROVED" | "REJECTED" | "IN_PROGRESS" | "COMPLETED";
 type SapStatus = "PENDING" | "SUCCESS" | "FAILED";
@@ -89,6 +90,13 @@ function filenameFromDisposition(disposition: string | null, fallback: string) {
   return fallback;
 }
 
+function formatDateTime(value: string) {
+  if (!value) {
+    return "-";
+  }
+  return new Date(value).toLocaleString("ko-KR");
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const range = useMemo(() => defaultRange(), []);
@@ -106,6 +114,7 @@ export default function DashboardPage() {
   });
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [tableRows, setTableRows] = useState<RequestRow[]>([]);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState("");
 
   useEffect(() => {
     const session = getSession();
@@ -126,8 +135,46 @@ export default function DashboardPage() {
     if (!token) {
       return;
     }
+
     void loadDashboard(token, from, to, statusFilter);
   }, [token]);
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
+
+    const refresh = () => {
+      void loadDashboard(token, appliedFilter.from, appliedFilter.to, appliedFilter.statusFilter);
+    };
+
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === REQUESTS_UPDATED_STORAGE_KEY) {
+        refresh();
+      }
+    };
+
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") {
+        refresh();
+      }
+    };
+
+    window.addEventListener(REQUESTS_UPDATED_EVENT, refresh);
+    window.addEventListener("storage", onStorage);
+    document.addEventListener("visibilitychange", onVisibility);
+
+    const timer = window.setInterval(() => {
+      refresh();
+    }, 30000);
+
+    return () => {
+      window.removeEventListener(REQUESTS_UPDATED_EVENT, refresh);
+      window.removeEventListener("storage", onStorage);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.clearInterval(timer);
+    };
+  }, [token, appliedFilter.from, appliedFilter.to, appliedFilter.statusFilter]);
 
   async function loadDashboard(currentToken: string, currentFrom: string, currentTo: string, currentStatus: RequestStatus | "") {
     setLoading(true);
@@ -160,8 +207,14 @@ export default function DashboardPage() {
         to: currentTo,
         statusFilter: currentStatus,
       });
+      setLastUpdatedAt(new Date().toISOString());
       setNotice("");
     } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 401) {
+        clearSession();
+        router.replace("/login");
+        return;
+      }
       const message = error instanceof Error ? error.message : "대시보드 조회에 실패했습니다.";
       setNotice(message);
     } finally {
@@ -176,6 +229,7 @@ export default function DashboardPage() {
 
     setExporting(format);
     setNotice("");
+
     try {
       const query = new URLSearchParams();
       query.set("from", appliedFilter.from);
@@ -210,6 +264,11 @@ export default function DashboardPage() {
       anchor.remove();
       window.URL.revokeObjectURL(url);
     } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 401) {
+        clearSession();
+        router.replace("/login");
+        return;
+      }
       const message = error instanceof Error ? error.message : "파일 내보내기에 실패했습니다.";
       setNotice(message);
     } finally {
@@ -244,7 +303,8 @@ export default function DashboardPage() {
     <main className={styles.page}>
       <header className={styles.header}>
         <h1 className={styles.title}>대시보드</h1>
-        <p className={styles.subtitle}>VAS 전체 현황 요약과 상세 표를 동시에 확인하고 즉시 내보낼 수 있습니다.</p>
+        <p className={styles.subtitle}>VAS 전체 현황 요약과 상세 표를 동시에 확인하고 내보낼 수 있습니다.</p>
+        <p className={styles.syncText}>최근 갱신: {formatDateTime(lastUpdatedAt)}</p>
       </header>
 
       <section className={styles.grid}>
@@ -261,11 +321,7 @@ export default function DashboardPage() {
             </div>
             <div className={styles.field}>
               <label htmlFor="status">상태 필터</label>
-              <select
-                id="status"
-                value={statusFilter}
-                onChange={(event) => setStatusFilter(event.target.value as RequestStatus | "")}
-              >
+              <select id="status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as RequestStatus | "")}>
                 <option value="">전체</option>
                 <option value="PENDING">대기</option>
                 <option value="APPROVED">승인</option>
@@ -355,7 +411,7 @@ export default function DashboardPage() {
               </article>
 
               <article className={styles.card}>
-                <h2>SAP 잡 상태</h2>
+                <h2>SAP 작업 상태</h2>
                 <div className={styles.statusCards}>
                   {Object.entries(summary.sapStatus).map(([key, value]) => (
                     <div key={key} className={styles.statusCard}>
@@ -405,14 +461,14 @@ export default function DashboardPage() {
             </article>
 
             <article className={styles.card}>
-              <h2>VAS 상세 표</h2>
+              <h2>VAS 상세표</h2>
               <div className={styles.tableWrap}>
                 <table className={styles.table}>
                   <thead>
                     <tr>
                       <th>제목</th>
                       <th>상태</th>
-                      <th>요청유형</th>
+                      <th>요청 유형</th>
                       <th>요청자</th>
                       <th>현재 배정 업체</th>
                       <th>마감일</th>
@@ -427,7 +483,7 @@ export default function DashboardPage() {
                         <td>{requestTypeLabel(row.requestType)}</td>
                         <td>{row.requester.name}</td>
                         <td>{row.assignedVendor?.name ?? "-"}</td>
-                        <td>{new Date(row.dueDate).toLocaleDateString()}</td>
+                        <td>{new Date(row.dueDate).toLocaleDateString("ko-KR")}</td>
                         <td className={styles.descriptionCell}>{row.description || "-"}</td>
                       </tr>
                     ))}

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import styles from "./vendor.module.css";
 import { apiJson } from "../../lib/api";
 import { requestStatusLabel, requestTypeLabel } from "../../lib/display";
+import { notifyRequestsUpdated } from "../../lib/realtime";
 import { getRoleHome, getSession } from "../../lib/session";
 
 type RequestStatus = "PENDING" | "APPROVED" | "IN_PROGRESS" | "COMPLETED" | "REJECTED";
@@ -140,6 +141,7 @@ export default function VendorPage() {
       await loadRequests(token);
       await loadDetail(token, selectedId);
       setNotice("작업 시작 처리 완료");
+      notifyRequestsUpdated();
     } catch (error) {
       const message = error instanceof Error ? error.message : "작업 시작 처리에 실패했습니다.";
       setNotice(message);
@@ -163,6 +165,7 @@ export default function VendorPage() {
       await loadRequests(token);
       await loadDetail(token, selectedId);
       setNotice("작업 완료 처리 완료");
+      notifyRequestsUpdated();
     } catch (error) {
       const message = error instanceof Error ? error.message : "작업 완료 처리에 실패했습니다.";
       setNotice(message);

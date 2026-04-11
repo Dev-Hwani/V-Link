@@ -9,7 +9,7 @@ export interface SessionUser {
 
 export interface SessionData {
   accessToken: string;
-  refreshToken: string;
+  refreshToken?: string;
   user: SessionUser;
 }
 
@@ -28,7 +28,7 @@ export function getSession(): SessionData | null {
 
   try {
     const parsed = JSON.parse(raw) as SessionData;
-    if (!parsed.accessToken || !parsed.refreshToken || !parsed.user?.role) {
+    if (!parsed.accessToken || !parsed.user?.role) {
       return null;
     }
     return parsed;

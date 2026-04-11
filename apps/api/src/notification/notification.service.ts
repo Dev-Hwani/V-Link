@@ -349,7 +349,11 @@ export class NotificationService {
     const recipientIds = new Set<string>();
 
     if (payload.event === "REQUEST_CREATED") {
-      adminIds.forEach((id) => recipientIds.add(id));
+      if (payload.targetAdminId) {
+        recipientIds.add(payload.targetAdminId);
+      } else {
+        adminIds.forEach((id) => recipientIds.add(id));
+      }
     }
     if (payload.event === "REQUEST_APPROVED") {
       recipientIds.add(request.requesterId);
@@ -359,7 +363,11 @@ export class NotificationService {
       recipientIds.add(request.requesterId);
     }
     if (payload.event === "REQUEST_STARTED" || payload.event === "REQUEST_COMPLETED") {
-      adminIds.forEach((id) => recipientIds.add(id));
+      if (request.targetAdminId) {
+        recipientIds.add(request.targetAdminId);
+      } else {
+        adminIds.forEach((id) => recipientIds.add(id));
+      }
       recipientIds.add(request.requesterId);
     }
 

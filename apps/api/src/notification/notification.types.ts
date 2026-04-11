@@ -12,6 +12,7 @@ export interface RequestLifecycleNotificationPayload {
   status: RequestStatus;
   team: string;
   dueDate: Date;
+  targetAdminId?: string | null;
   vendorName?: string | null;
   reason?: string | null;
 }
@@ -24,4 +25,3 @@ export interface SapFailureNotificationPayload {
   errorCode?: string | null;
   httpStatus?: number | null;
 }
-

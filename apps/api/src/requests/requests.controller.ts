@@ -47,22 +47,32 @@ export class RequestsController {
     return this.requestsService.list(user);
   }
 
+  @Get("admin/assignees")
+  @Roles(Role.ADMIN, Role.REQUESTER)
+  listTargetAdmins() {
+    return this.requestsService.listTargetAdmins();
+  }
+
   @Get("admin/table")
   @Roles(Role.ADMIN)
-  listAdminTable(@Query() query: ListAdminRequestsQueryDto) {
-    return this.requestsService.listAdminTable(query);
+  listAdminTable(@CurrentUser() user: AuthUser, @Query() query: ListAdminRequestsQueryDto) {
+    return this.requestsService.listAdminTable(user, query);
   }
 
   @Get("admin/pending-count")
   @Roles(Role.ADMIN)
-  getAdminPendingCount() {
-    return this.requestsService.getAdminPendingCount();
+  getAdminPendingCount(@CurrentUser() user: AuthUser) {
+    return this.requestsService.getAdminPendingCount(user);
   }
 
   @Get("admin/export")
   @Roles(Role.ADMIN)
-  async exportAdminTable(@Query() query: ExportAdminRequestsQueryDto, @Res() res: Response) {
-    const file = await this.requestsService.exportAdminTable(query);
+  async exportAdminTable(
+    @CurrentUser() user: AuthUser,
+    @Query() query: ExportAdminRequestsQueryDto,
+    @Res() res: Response,
+  ) {
+    const file = await this.requestsService.exportAdminTable(user, query);
     res.setHeader("Content-Type", file.mimeType);
     res.setHeader("Content-Disposition", `attachment; filename=\"${file.fileName}\"`);
     res.send(file.content);

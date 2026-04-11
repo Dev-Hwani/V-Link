@@ -37,6 +37,7 @@ export class CalendarService {
     }
 
     if (user.role === Role.ADMIN) {
+      where.OR = [{ targetAdminId: user.sub }, { targetAdminId: null }];
       if (query.vendorId) {
         where.assignedVendorId = query.vendorId;
       }
@@ -124,4 +125,3 @@ export class CalendarService {
     return [];
   }
 }
-

@@ -35,6 +35,11 @@ interface AdminRequestTableRow {
     name: string;
     email: string;
   };
+  targetAdmin: {
+    id: string;
+    name: string;
+    email: string;
+  } | null;
   assignedVendor: {
     id: string;
     code: string;
@@ -70,6 +75,28 @@ export class RequestsService {
       throw new ForbiddenException("Vendor users cannot create requests");
     }
 
+    let targetAdminId: string | null = dto.targetAdminId ?? null;
+    if (user.role === Role.REQUESTER && !targetAdminId) {
+      throw new BadRequestException("targetAdminId is required for requester");
+    }
+
+    if (user.role === Role.ADMIN && !targetAdminId) {
+      targetAdminId = user.sub;
+    }
+
+    if (targetAdminId) {
+      const targetAdmin = await this.prisma.user.findFirst({
+        where: {
+          id: targetAdminId,
+          role: Role.ADMIN,
+        },
+        select: { id: true },
+      });
+      if (!targetAdmin) {
+        throw new NotFoundException("Target admin not found");
+      }
+    }
+
     const created = await this.prisma.vasRequest.create({
       data: {
         requestType: dto.requestType,
@@ -78,6 +105,7 @@ export class RequestsService {
         team: dto.team,
         description: dto.description,
         requesterId: user.sub,
+        targetAdminId,
         histories: {
           create: {
             toStatus: RequestStatus.PENDING,
@@ -100,6 +128,7 @@ export class RequestsService {
       status: created.status,
       team: created.team,
       dueDate: created.dueDate,
+      targetAdminId,
     });
 
     return created;
@@ -107,6 +136,10 @@ export class RequestsService {
 
   async list(user: AuthUser) {
     const where: Prisma.VasRequestWhereInput = {};
+
+    if (user.role === Role.ADMIN) {
+      where.OR = [{ targetAdminId: user.sub }, { targetAdminId: null }];
+    }
 
     if (user.role === Role.REQUESTER) {
       where.requesterId = user.sub;
@@ -129,6 +162,13 @@ export class RequestsService {
             name: true,
           },
         },
+        targetAdmin: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
         assignedVendor: true,
         attachments: true,
         assignments: {
@@ -144,28 +184,41 @@ export class RequestsService {
     });
   }
 
-  async listAdminTable(query: ListAdminRequestsQueryDto) {
+  async listTargetAdmins() {
+    return this.prisma.user.findMany({
+      where: { role: Role.ADMIN },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+      },
+      orderBy: [{ name: "asc" }, { email: "asc" }],
+    });
+  }
+
+  async listAdminTable(user: AuthUser, query: ListAdminRequestsQueryDto) {
     const take = Math.min(query.limit ?? 500, 5000);
-    const rows = await this.findAdminTableRows(query, take);
+    const rows = await this.findAdminTableRows(query, take, user.sub);
     return {
       count: rows.length,
       items: rows,
     };
   }
 
-  async getAdminPendingCount() {
+  async getAdminPendingCount(user: AuthUser) {
     const count = await this.prisma.vasRequest.count({
       where: {
         status: RequestStatus.PENDING,
+        OR: [{ targetAdminId: user.sub }, { targetAdminId: null }],
       },
     });
 
     return { count };
   }
 
-  async exportAdminTable(query: ExportAdminRequestsQueryDto) {
+  async exportAdminTable(user: AuthUser, query: ExportAdminRequestsQueryDto) {
     const format = query.format ?? AdminRequestExportFormat.XLSX;
-    const rows = await this.findAdminTableRows(query, 5000);
+    const rows = await this.findAdminTableRows(query, 5000, user.sub);
     const timestamp = new Date().toISOString().replaceAll(":", "").replaceAll("-", "").slice(0, 15);
     const baseName = `vas-requests-${timestamp}`;
 
@@ -197,6 +250,13 @@ export class RequestsService {
             name: true,
           },
         },
+        targetAdmin: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
         assignedVendor: true,
         attachments: true,
         assignments: {
@@ -219,6 +279,10 @@ export class RequestsService {
       throw new ForbiddenException("You can only access your own requests");
     }
 
+    if (user.role === Role.ADMIN && request.targetAdminId && request.targetAdminId !== user.sub) {
+      throw new ForbiddenException("You can only access requests assigned to you");
+    }
+
     if (user.role === Role.VENDOR && request.assignedVendorId !== user.vendorId) {
       throw new ForbiddenException("You can only access your assigned requests");
     }
@@ -231,6 +295,10 @@ export class RequestsService {
 
     if (!request) {
       throw new NotFoundException("Request not found");
+    }
+
+    if (request.targetAdminId && request.targetAdminId !== user.sub) {
+      throw new ForbiddenException("You can only process requests assigned to you");
     }
 
     if (request.status !== RequestStatus.PENDING) {
@@ -292,6 +360,10 @@ export class RequestsService {
 
     if (!request) {
       throw new NotFoundException("Request not found");
+    }
+
+    if (request.targetAdminId && request.targetAdminId !== user.sub) {
+      throw new ForbiddenException("You can only process requests assigned to you");
     }
 
     if (request.status !== RequestStatus.PENDING) {
@@ -442,6 +514,10 @@ export class RequestsService {
       throw new ForbiddenException("Requesters can upload only to their own requests");
     }
 
+    if (user.role === Role.ADMIN && request.targetAdminId && request.targetAdminId !== user.sub) {
+      throw new ForbiddenException("Admins can upload only to requests assigned to them");
+    }
+
     if (user.role === Role.VENDOR && request.assignedVendorId !== user.vendorId) {
       throw new ForbiddenException("Vendors can upload only to assigned requests");
     }
@@ -458,13 +534,20 @@ export class RequestsService {
     });
   }
 
-  private async findAdminTableRows(query: ListAdminRequestsQueryDto, take: number) {
-    const where = this.buildAdminTableWhere(query);
+  private async findAdminTableRows(query: ListAdminRequestsQueryDto, take: number, adminUserId: string) {
+    const where = this.buildAdminTableWhere(query, adminUserId);
 
     const requests = await this.prisma.vasRequest.findMany({
       where,
       include: {
         requester: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
+        },
+        targetAdmin: {
           select: {
             id: true,
             name: true,
@@ -505,6 +588,13 @@ export class RequestsService {
         name: request.requester.name,
         email: request.requester.email,
       },
+      targetAdmin: request.targetAdmin
+        ? {
+            id: request.targetAdmin.id,
+            name: request.targetAdmin.name,
+            email: request.targetAdmin.email,
+          }
+        : null,
       assignedVendor: request.assignedVendor
         ? {
             id: request.assignedVendor.id,
@@ -517,48 +607,59 @@ export class RequestsService {
     }));
   }
 
-  private buildAdminTableWhere(query: ListAdminRequestsQueryDto): Prisma.VasRequestWhereInput {
-    const where: Prisma.VasRequestWhereInput = {};
+  private buildAdminTableWhere(query: ListAdminRequestsQueryDto, adminUserId: string): Prisma.VasRequestWhereInput {
+    const andConditions: Prisma.VasRequestWhereInput[] = [
+      {
+        OR: [{ targetAdminId: adminUserId }, { targetAdminId: null }],
+      },
+    ];
 
     if (query.status) {
-      where.status = query.status;
+      andConditions.push({ status: query.status });
     }
 
     if (query.vendorId) {
-      where.assignedVendorId = query.vendorId;
+      andConditions.push({ assignedVendorId: query.vendorId });
     }
 
     if (query.requesterId) {
-      where.requesterId = query.requesterId;
+      andConditions.push({ requesterId: query.requesterId });
     }
 
     if (query.from || query.to) {
-      where.dueDate = {};
+      const dueDate: Prisma.DateTimeFilter = {};
       if (query.from) {
-        where.dueDate.gte = new Date(query.from);
+        dueDate.gte = new Date(query.from);
       }
       if (query.to) {
         const end = new Date(query.to);
         end.setHours(23, 59, 59, 999);
-        where.dueDate.lte = end;
+        dueDate.lte = end;
       }
+      andConditions.push({ dueDate });
     }
 
     if (query.search?.trim()) {
       const keyword = query.search.trim();
-      where.OR = [
-        { title: { contains: keyword, mode: "insensitive" } },
-        { team: { contains: keyword, mode: "insensitive" } },
-        { requestType: { contains: keyword, mode: "insensitive" } },
-        { description: { contains: keyword, mode: "insensitive" } },
-        { requester: { name: { contains: keyword, mode: "insensitive" } } },
-        { requester: { email: { contains: keyword, mode: "insensitive" } } },
-        { assignedVendor: { name: { contains: keyword, mode: "insensitive" } } },
-        { assignedVendor: { code: { contains: keyword, mode: "insensitive" } } },
-      ];
+      andConditions.push({
+        OR: [
+          { title: { contains: keyword, mode: "insensitive" } },
+          { team: { contains: keyword, mode: "insensitive" } },
+          { requestType: { contains: keyword, mode: "insensitive" } },
+          { description: { contains: keyword, mode: "insensitive" } },
+          { requester: { name: { contains: keyword, mode: "insensitive" } } },
+          { requester: { email: { contains: keyword, mode: "insensitive" } } },
+          { assignedVendor: { name: { contains: keyword, mode: "insensitive" } } },
+          { assignedVendor: { code: { contains: keyword, mode: "insensitive" } } },
+        ],
+      });
     }
 
-    return where;
+    if (andConditions.length === 1) {
+      return andConditions[0];
+    }
+
+    return { AND: andConditions };
   }
 
   private toAdminCsv(rows: AdminRequestTableRow[]) {

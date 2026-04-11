@@ -41,6 +41,7 @@ model User {
   vendorId          String?
   vendor            Vendor?         @relation(fields: [vendorId], references: [id])
   requestedRequests VasRequest[]    @relation("RequesterRequests")
+  targetRequests    VasRequest[]    @relation("TargetAdminRequests")
   approvedRequests  VasRequest[]    @relation("ApproverRequests")
   createdAssignments Assignment[]   @relation("AssignmentsByAdmin")
   statusEvents      StatusHistory[] @relation("StatusActor")
@@ -70,6 +71,8 @@ model VasRequest {
   status           RequestStatus   @default(PENDING)
   requesterId      String
   requester        User            @relation("RequesterRequests", fields: [requesterId], references: [id])
+  targetAdminId    String?
+  targetAdmin      User?           @relation("TargetAdminRequests", fields: [targetAdminId], references: [id])
   assignedVendorId String?
   assignedVendor   Vendor?         @relation(fields: [assignedVendorId], references: [id])
   approvedById     String?
@@ -85,6 +88,7 @@ model VasRequest {
 
   @@index([status])
   @@index([requesterId])
+  @@index([targetAdminId])
   @@index([assignedVendorId])
 }
 

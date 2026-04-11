@@ -67,13 +67,13 @@ function monthKey(date: Date) {
 export class DashboardService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async getSummary(query: DashboardSummaryQueryDto): Promise<DashboardSummaryResult> {
+  async getSummary(adminUserId: string, query: DashboardSummaryQueryDto): Promise<DashboardSummaryResult> {
     const range = this.resolveRange(query);
 
-    const requestStatus = await this.getRequestStatusSummary(range);
-    const monthlyTrend = await this.getMonthlyTrend(range);
-    const vendorWorkload = await this.getVendorWorkload(range);
-    const sapStatus = await this.getSapSummary(range);
+    const requestStatus = await this.getRequestStatusSummary(range, adminUserId);
+    const monthlyTrend = await this.getMonthlyTrend(range, adminUserId);
+    const vendorWorkload = await this.getVendorWorkload(range, adminUserId);
+    const sapStatus = await this.getSapSummary(range, adminUserId);
 
     return {
       range: {
@@ -87,19 +87,19 @@ export class DashboardService {
     };
   }
 
-  async getDetailTable(query: DashboardDetailTableQueryDto) {
+  async getDetailTable(adminUserId: string, query: DashboardDetailTableQueryDto) {
     const take = Math.min(query.limit ?? 500, 5000);
-    const rows = await this.getDetailRows(query, take);
+    const rows = await this.getDetailRows(query, take, adminUserId);
     return {
       count: rows.length,
       items: rows,
     };
   }
 
-  async exportDashboard(query: DashboardExportQueryDto) {
+  async exportDashboard(adminUserId: string, query: DashboardExportQueryDto) {
     const format = query.format ?? DashboardExportFormat.XLSX;
-    const summary = await this.getSummary(query);
-    const detailRows = await this.getDetailRows(query, 5000);
+    const summary = await this.getSummary(adminUserId, query);
+    const detailRows = await this.getDetailRows(query, 5000, adminUserId);
     const timestamp = new Date().toISOString().replaceAll(":", "").replaceAll("-", "").slice(0, 15);
     const baseName = `dashboard-${timestamp}`;
 
@@ -128,19 +128,26 @@ export class DashboardService {
     return { from, to };
   }
 
-  private createdAtRangeWhere(range: { from: Date; to: Date }) {
+  private createdAtRangeWhere(range: { from: Date; to: Date }, adminUserId: string): Prisma.VasRequestWhereInput {
     return {
-      createdAt: {
-        gte: range.from,
-        lte: range.to,
-      },
+      AND: [
+        {
+          createdAt: {
+            gte: range.from,
+            lte: range.to,
+          },
+        },
+        {
+          OR: [{ targetAdminId: adminUserId }, { targetAdminId: null }],
+        },
+      ],
     };
   }
 
-  private async getRequestStatusSummary(range: { from: Date; to: Date }) {
+  private async getRequestStatusSummary(range: { from: Date; to: Date }, adminUserId: string) {
     const groups = await this.prisma.vasRequest.groupBy({
       by: ["status"],
-      where: this.createdAtRangeWhere(range),
+      where: this.createdAtRangeWhere(range, adminUserId),
       _count: { _all: true },
     });
 
@@ -159,9 +166,9 @@ export class DashboardService {
     return summary;
   }
 
-  private async getMonthlyTrend(range: { from: Date; to: Date }) {
+  private async getMonthlyTrend(range: { from: Date; to: Date }, adminUserId: string) {
     const rows = await this.prisma.vasRequest.findMany({
-      where: this.createdAtRangeWhere(range),
+      where: this.createdAtRangeWhere(range, adminUserId),
       select: {
         createdAt: true,
       },
@@ -178,12 +185,11 @@ export class DashboardService {
       .sort((a, b) => a.month.localeCompare(b.month));
   }
 
-  private async getVendorWorkload(range: { from: Date; to: Date }) {
+  private async getVendorWorkload(range: { from: Date; to: Date }, adminUserId: string) {
     const groups = await this.prisma.vasRequest.groupBy({
       by: ["assignedVendorId", "status"],
       where: {
-        assignedVendorId: { not: null },
-        ...this.createdAtRangeWhere(range),
+        AND: [{ assignedVendorId: { not: null } }, this.createdAtRangeWhere(range, adminUserId)],
       },
       _count: { _all: true },
     });
@@ -232,10 +238,18 @@ export class DashboardService {
     return [...workloadMap.values()].sort((a, b) => b.total - a.total);
   }
 
-  private async getSapSummary(range: { from: Date; to: Date }) {
+  private async getSapSummary(range: { from: Date; to: Date }, adminUserId: string) {
     const groups = await this.prisma.sapJobLog.groupBy({
       by: ["status"],
-      where: this.createdAtRangeWhere(range),
+      where: {
+        createdAt: {
+          gte: range.from,
+          lte: range.to,
+        },
+        request: {
+          OR: [{ targetAdminId: adminUserId }, { targetAdminId: null }],
+        },
+      },
       _count: { _all: true },
     });
 
@@ -250,12 +264,13 @@ export class DashboardService {
     return summary;
   }
 
-  private async getDetailRows(query: DashboardDetailTableQueryDto, take: number) {
+  private async getDetailRows(query: DashboardDetailTableQueryDto, take: number, adminUserId: string) {
     const range = this.resolveRange(query);
-    const where: Prisma.VasRequestWhereInput = this.createdAtRangeWhere(range);
+    const andConditions: Prisma.VasRequestWhereInput[] = [this.createdAtRangeWhere(range, adminUserId)];
     if (query.status) {
-      where.status = query.status;
+      andConditions.push({ status: query.status });
     }
+    const where: Prisma.VasRequestWhereInput = andConditions.length === 1 ? andConditions[0] : { AND: andConditions };
 
     const rows = await this.prisma.vasRequest.findMany({
       where,

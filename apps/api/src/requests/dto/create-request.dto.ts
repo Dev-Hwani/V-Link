@@ -1,4 +1,4 @@
-import { IsDateString, IsOptional, IsString, MaxLength } from "class-validator";
+import { IsDateString, IsOptional, IsString, IsUUID, MaxLength } from "class-validator";
 
 export class CreateRequestDto {
   @IsString()
@@ -20,4 +20,8 @@ export class CreateRequestDto {
   @IsString()
   @MaxLength(2000)
   description?: string;
+
+  @IsOptional()
+  @IsUUID()
+  targetAdminId?: string;
 }

@@ -21,10 +21,17 @@ interface RequestItem {
   status: RequestStatus;
 }
 
+interface TargetAdminOption {
+  id: string;
+  name: string;
+  email: string;
+}
+
 export default function RequesterPage() {
   const router = useRouter();
   const [token, setToken] = useState("");
   const [requests, setRequests] = useState<RequestItem[]>([]);
+  const [targetAdmins, setTargetAdmins] = useState<TargetAdminOption[]>([]);
   const [selectedId, setSelectedId] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
@@ -34,6 +41,7 @@ export default function RequesterPage() {
   const [team, setTeam] = useState("OPS");
   const [dueDate, setDueDate] = useState("");
   const [description, setDescription] = useState("");
+  const [targetAdminId, setTargetAdminId] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const summary = useMemo(() => {
     const base = {
@@ -70,8 +78,28 @@ export default function RequesterPage() {
     if (!token) {
       return;
     }
+    void loadTargetAdmins(token);
+  }, [token]);
+
+  useEffect(() => {
+    if (!token) {
+      return;
+    }
     void loadRequests(token);
   }, [token]);
+
+  async function loadTargetAdmins(currentToken: string) {
+    try {
+      const data = await apiJson<TargetAdminOption[]>("/requests/admin/assignees", currentToken, { method: "GET" });
+      setTargetAdmins(data);
+      if (data.length > 0 && !targetAdminId) {
+        setTargetAdminId(data[0].id);
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "관리자 목록 조회에 실패했습니다.";
+      setNotice(message);
+    }
+  }
 
   async function loadRequests(currentToken: string) {
     setLoading(true);
@@ -94,6 +122,10 @@ export default function RequesterPage() {
     if (!token) {
       return;
     }
+    if (!targetAdminId) {
+      setNotice("요청을 처리할 관리자를 선택해 주세요.");
+      return;
+    }
 
     setLoading(true);
     setNotice("");
@@ -107,6 +139,7 @@ export default function RequesterPage() {
           dueDate: new Date(`${dueDate}T00:00:00.000Z`).toISOString(),
           team,
           description,
+          targetAdminId,
         }),
       });
 
@@ -192,6 +225,22 @@ export default function RequesterPage() {
             <div className={styles.field}>
               <label htmlFor="team">담당 팀</label>
               <input id="team" value={team} onChange={(event) => setTeam(event.target.value)} required />
+            </div>
+            <div className={styles.field}>
+              <label htmlFor="targetAdminId">담당 관리자</label>
+              <select
+                id="targetAdminId"
+                value={targetAdminId}
+                onChange={(event) => setTargetAdminId(event.target.value)}
+                required
+              >
+                {targetAdmins.length === 0 && <option value="">선택 가능한 관리자가 없습니다</option>}
+                {targetAdmins.map((admin) => (
+                  <option key={admin.id} value={admin.id}>
+                    {admin.name} ({admin.email})
+                  </option>
+                ))}
+              </select>
             </div>
             <div className={styles.field}>
               <label htmlFor="dueDate">마감일</label>

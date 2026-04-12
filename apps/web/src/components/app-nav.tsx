@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -10,7 +10,7 @@ import { PENDING_COUNT_UPDATED_EVENT, PENDING_COUNT_UPDATED_STORAGE_KEY } from "
 import { SESSION_UPDATED_EVENT, clearSession, getSession, type SessionData } from "../lib/session";
 
 type ThemeMode = "light" | "dark";
-type MenuIconName = "workspace" | "dashboard" | "calendar" | "login" | "signup";
+type MenuIconName = "workspace" | "dashboard" | "calendar" | "sessions" | "login" | "signup";
 
 interface MenuItem {
   href: string;
@@ -59,6 +59,16 @@ function NavIcon({ name }: { name: MenuIconName }) {
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <path d="M5.5 6.5A2.5 2.5 0 0 1 8 4h8a2.5 2.5 0 0 1 2.5 2.5v11A2.5 2.5 0 0 1 16 20H8a2.5 2.5 0 0 1-2.5-2.5z" />
         <path d="M8.5 3v3M15.5 3v3M5.5 9h13" />
+      </svg>
+    );
+  }
+
+  if (name === "sessions") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <rect x="3.5" y="4.5" width="17" height="11" rx="2.5" />
+        <path d="M8 19.5h8" />
+        <path d="M11.5 15.5v4" />
       </svg>
     );
   }
@@ -197,14 +207,19 @@ export function AppNav() {
           { href: "/admin/requests", label: "요청한 작업", icon: "workspace" },
           { href: "/dashboard", label: "대시보드", icon: "dashboard" },
           { href: "/calendar", label: "캘린더", icon: "calendar" },
+          { href: "/sessions", label: "내 세션", icon: "sessions" },
         ]
       : session?.user.role === "REQUESTER"
         ? [
             { href: "/requester", label: "요청한 작업", icon: "workspace" },
             { href: "/calendar", label: "캘린더", icon: "calendar" },
+            { href: "/sessions", label: "내 세션", icon: "sessions" },
           ]
         : session?.user.role === "VENDOR"
-          ? [{ href: "/vendor", label: "요청한 작업", icon: "workspace" }]
+          ? [
+              { href: "/vendor", label: "요청한 작업", icon: "workspace" },
+              { href: "/sessions", label: "내 세션", icon: "sessions" },
+            ]
           : [];
 
   const homePath =

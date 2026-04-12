@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -6,6 +6,38 @@ import { useRouter } from "next/navigation";
 import styles from "./login.module.css";
 import { API_BASE } from "../../lib/api";
 import { getRoleHome, getSession, setSession, type SessionData } from "../../lib/session";
+
+function parseApiErrorMessage(raw: string, fallback: string) {
+  if (!raw.trim()) {
+    return fallback;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as { message?: string | string[] };
+    if (Array.isArray(parsed.message) && parsed.message.length > 0) {
+      return parsed.message.map((item) => String(item)).join(", ");
+    }
+    if (typeof parsed.message === "string" && parsed.message.trim()) {
+      return parsed.message;
+    }
+  } catch {
+    // noop
+  }
+
+  return raw;
+}
+
+function resolveErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) {
+    const lowered = error.message.toLowerCase();
+    if (lowered.includes("failed to fetch") || lowered.includes("networkerror")) {
+      return "API 서버에 연결할 수 없습니다. API 서버가 실행 중인지 확인해 주세요. (http://localhost:4000/health)";
+    }
+    return error.message;
+  }
+
+  return fallback;
+}
 
 export default function LoginPage() {
   const router = useRouter();
@@ -34,16 +66,15 @@ export default function LoginPage() {
       });
 
       if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || "로그인에 실패했습니다.");
+        const raw = await response.text();
+        throw new Error(parseApiErrorMessage(raw, "로그인에 실패했습니다."));
       }
 
       const data = (await response.json()) as SessionData;
       setSession(data);
       router.push(getRoleHome(data.user.role));
     } catch (error) {
-      const message = error instanceof Error ? error.message : "로그인 중 오류가 발생했습니다.";
-      setNotice(message);
+      setNotice(resolveErrorMessage(error, "로그인 중 오류가 발생했습니다."));
     } finally {
       setLoading(false);
     }
@@ -53,13 +84,14 @@ export default function LoginPage() {
     <main className={styles.page}>
       <section className={styles.card}>
         <h1 className={styles.title}>V-Link 로그인</h1>
-        <p className={styles.subtitle}>로그인 후 역할에 맞는 작업 화면으로 자동 이동합니다.</p>
+        <p className={styles.subtitle}>로그인하면 역할에 맞는 작업 화면으로 자동 이동합니다.</p>
 
         <form className={styles.form} onSubmit={onSubmit}>
           <div className={styles.field}>
             <label htmlFor="email">이메일</label>
             <input
               id="email"
+              type="email"
               value={email}
               onChange={(event) => setEmail(event.target.value)}
               placeholder="name@company.com"

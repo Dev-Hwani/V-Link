@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -7,12 +7,46 @@ import styles from "./signup.module.css";
 import { API_BASE } from "../../lib/api";
 import { getRoleHome, getSession, setSession, type SessionData } from "../../lib/session";
 
+type SignupRole = "REQUESTER" | "VENDOR" | "ADMIN";
+
+function parseApiErrorMessage(raw: string, fallback: string) {
+  if (!raw.trim()) {
+    return fallback;
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as { message?: string | string[] };
+    if (Array.isArray(parsed.message) && parsed.message.length > 0) {
+      return parsed.message.map((item) => String(item)).join(", ");
+    }
+    if (typeof parsed.message === "string" && parsed.message.trim()) {
+      return parsed.message;
+    }
+  } catch {
+    // noop
+  }
+
+  return raw;
+}
+
+function resolveErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) {
+    const lowered = error.message.toLowerCase();
+    if (lowered.includes("failed to fetch") || lowered.includes("networkerror")) {
+      return "API 서버에 연결할 수 없습니다. API 서버가 실행 중인지 확인해 주세요. (http://localhost:4000/health)";
+    }
+    return error.message;
+  }
+
+  return fallback;
+}
+
 export default function SignupPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"REQUESTER" | "VENDOR" | "ADMIN">("REQUESTER");
+  const [role, setRole] = useState<SignupRole>("REQUESTER");
   const [vendorCode, setVendorCode] = useState("");
   const [vendorName, setVendorName] = useState("");
   const [adminSignupCode, setAdminSignupCode] = useState("");
@@ -32,31 +66,32 @@ export default function SignupPage() {
     setNotice("");
 
     try {
+      const payload = {
+        name,
+        email,
+        password,
+        role,
+        vendorCode: role === "VENDOR" ? vendorCode : undefined,
+        vendorName: role === "VENDOR" ? vendorName : undefined,
+        adminSignupCode: role === "ADMIN" ? adminSignupCode : undefined,
+      };
+
       const response = await fetch(`${API_BASE}/auth/signup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          email,
-          password,
-          role,
-          vendorCode: role === "VENDOR" ? vendorCode : undefined,
-          vendorName: role === "VENDOR" ? vendorName : undefined,
-          adminSignupCode: role === "ADMIN" ? adminSignupCode : undefined,
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || "회원가입에 실패했습니다.");
+        const raw = await response.text();
+        throw new Error(parseApiErrorMessage(raw, "회원가입에 실패했습니다."));
       }
 
       const data = (await response.json()) as SessionData;
       setSession(data);
       router.push(getRoleHome(data.user.role));
     } catch (error) {
-      const message = error instanceof Error ? error.message : "회원가입 중 오류가 발생했습니다.";
-      setNotice(message);
+      setNotice(resolveErrorMessage(error, "회원가입 중 오류가 발생했습니다."));
     } finally {
       setLoading(false);
     }
@@ -66,7 +101,7 @@ export default function SignupPage() {
     <main className={styles.page}>
       <section className={styles.card}>
         <h1 className={styles.title}>V-Link 회원가입</h1>
-        <p className={styles.subtitle}>역할을 선택해 계정을 만들고, 가입 즉시 자동 로그인됩니다.</p>
+        <p className={styles.subtitle}>역할을 선택해 계정을 만들고, 완료 즉시 자동 로그인됩니다.</p>
 
         <form className={styles.form} onSubmit={onSubmit}>
           <div className={styles.field}>
@@ -75,11 +110,12 @@ export default function SignupPage() {
               id="name"
               value={name}
               onChange={(event) => setName(event.target.value)}
-              placeholder="이름 입력"
+              placeholder="이름을 입력하세요"
               required
               minLength={2}
             />
           </div>
+
           <div className={styles.field}>
             <label htmlFor="email">이메일</label>
             <input
@@ -91,6 +127,7 @@ export default function SignupPage() {
               required
             />
           </div>
+
           <div className={styles.field}>
             <label htmlFor="password">비밀번호</label>
             <input
@@ -100,21 +137,19 @@ export default function SignupPage() {
               onChange={(event) => setPassword(event.target.value)}
               required
               minLength={8}
-              placeholder="8자 이상 입력"
+              placeholder="8자 이상 입력하세요"
             />
           </div>
+
           <div className={styles.field}>
             <label htmlFor="role">역할</label>
-            <select
-              id="role"
-              value={role}
-              onChange={(event) => setRole(event.target.value as "REQUESTER" | "VENDOR" | "ADMIN")}
-            >
+            <select id="role" value={role} onChange={(event) => setRole(event.target.value as SignupRole)}>
               <option value="REQUESTER">요청자 (REQUESTER)</option>
-              <option value="VENDOR">업체 (VENDOR)</option>
+              <option value="VENDOR">업체 사용자 (VENDOR)</option>
               <option value="ADMIN">관리자 (ADMIN)</option>
             </select>
           </div>
+
           {role === "VENDOR" && (
             <>
               <div className={styles.field}>
@@ -123,7 +158,7 @@ export default function SignupPage() {
                   id="vendorCode"
                   value={vendorCode}
                   onChange={(event) => setVendorCode(event.target.value)}
-                  placeholder="예: VENDOR-001"
+                  placeholder="예: DEVELOPMENT-CO-001"
                   required
                 />
               </div>
@@ -133,12 +168,13 @@ export default function SignupPage() {
                   id="vendorName"
                   value={vendorName}
                   onChange={(event) => setVendorName(event.target.value)}
-                  placeholder="예: ABC Logistics"
+                  placeholder="예: Development Co"
                   required
                 />
               </div>
             </>
           )}
+
           {role === "ADMIN" && (
             <div className={styles.field}>
               <label htmlFor="adminCode">관리자 가입 코드</label>
@@ -146,13 +182,14 @@ export default function SignupPage() {
                 id="adminCode"
                 value={adminSignupCode}
                 onChange={(event) => setAdminSignupCode(event.target.value)}
-                placeholder="관리자 코드 입력"
+                placeholder="관리자 가입 코드를 입력하세요"
                 required
               />
             </div>
           )}
+
           <button className={styles.button} type="submit" disabled={loading}>
-            {loading ? "가입 중..." : "회원가입"}
+            {loading ? "회원가입 중..." : "회원가입"}
           </button>
         </form>
 

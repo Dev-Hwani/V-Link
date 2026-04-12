@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import dayGridPlugin from "@fullcalendar/daygrid";
 import interactionPlugin from "@fullcalendar/interaction";

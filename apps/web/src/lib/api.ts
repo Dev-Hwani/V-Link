@@ -1,4 +1,4 @@
-﻿import { clearSession, getSession, setSession, type SessionData } from "./session";
+import { clearSession, getSession, setSession, type SessionData } from "./session";
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
 

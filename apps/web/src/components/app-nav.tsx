@@ -18,6 +18,23 @@ interface MenuItem {
   icon: MenuIconName;
 }
 
+function getCookieValue(name: string) {
+  if (typeof document === "undefined") {
+    return "";
+  }
+
+  const prefix = `${name}=`;
+  const pairs = document.cookie.split(";");
+  for (const pair of pairs) {
+    const trimmed = pair.trim();
+    if (trimmed.startsWith(prefix)) {
+      return decodeURIComponent(trimmed.slice(prefix.length));
+    }
+  }
+
+  return "";
+}
+
 function NavIcon({ name }: { name: MenuIconName }) {
   if (name === "workspace") {
     return (
@@ -138,21 +155,19 @@ export function AppNav() {
   }, [session?.accessToken, session?.user.role]);
 
   async function onLogout() {
-    const current = getSession();
-    if (current?.refreshToken) {
-      try {
-        await fetch(`${API_BASE}/auth/logout`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            refreshToken: current.refreshToken,
-          }),
-        });
-      } catch {
-        // ignore logout request failures and clear local session anyway
-      }
+    try {
+      const csrfToken = getCookieValue("csrf_token");
+      await fetch(`${API_BASE}/auth/logout`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(csrfToken ? { "x-csrf-token": csrfToken } : {}),
+        },
+        body: "{}",
+        credentials: "include",
+      });
+    } catch {
+      // ignore logout request failures and clear local session anyway
     }
 
     clearSession();

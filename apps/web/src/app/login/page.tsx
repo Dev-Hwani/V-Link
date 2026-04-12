@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import styles from "./login.module.css";
 import { API_BASE } from "../../lib/api";
-import { getRoleHome, getSession, setSession, type SessionData } from "../../lib/session";
+import { createCookieSession, getRoleHome, getSession, setSession, type SessionUser } from "../../lib/session";
 
 function parseApiErrorMessage(raw: string, fallback: string) {
   if (!raw.trim()) {
@@ -63,6 +63,7 @@ export default function LoginPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -70,8 +71,11 @@ export default function LoginPage() {
         throw new Error(parseApiErrorMessage(raw, "로그인에 실패했습니다."));
       }
 
-      const data = (await response.json()) as SessionData;
-      setSession(data);
+      const data = (await response.json()) as { user?: SessionUser };
+      if (!data.user) {
+        throw new Error("로그인 응답이 올바르지 않습니다.");
+      }
+      setSession(createCookieSession({ user: data.user }));
       router.push(getRoleHome(data.user.role));
     } catch (error) {
       setNotice(resolveErrorMessage(error, "로그인 중 오류가 발생했습니다."));

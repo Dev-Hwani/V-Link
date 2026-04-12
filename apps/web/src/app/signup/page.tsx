@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 import styles from "./signup.module.css";
 import { API_BASE } from "../../lib/api";
-import { getRoleHome, getSession, setSession, type SessionData } from "../../lib/session";
+import { createCookieSession, getRoleHome, getSession, setSession, type SessionUser } from "../../lib/session";
 
 type SignupRole = "REQUESTER" | "VENDOR" | "ADMIN";
 
@@ -80,6 +80,7 @@ export default function SignupPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -87,8 +88,11 @@ export default function SignupPage() {
         throw new Error(parseApiErrorMessage(raw, "회원가입에 실패했습니다."));
       }
 
-      const data = (await response.json()) as SessionData;
-      setSession(data);
+      const data = (await response.json()) as { user?: SessionUser };
+      if (!data.user) {
+        throw new Error("회원가입 응답이 올바르지 않습니다.");
+      }
+      setSession(createCookieSession({ user: data.user }));
       router.push(getRoleHome(data.user.role));
     } catch (error) {
       setNotice(resolveErrorMessage(error, "회원가입 중 오류가 발생했습니다."));

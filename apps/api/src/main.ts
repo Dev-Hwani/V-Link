@@ -1,5 +1,7 @@
 import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
+import * as cookieParser from "cookie-parser";
+import { Request, Response } from "express";
 
 import { AppModule } from "./app.module";
 
@@ -15,6 +17,40 @@ async function bootstrap() {
   app.enableCors({
     origin: corsOrigins,
     credentials: true,
+  });
+
+  app.use(cookieParser());
+  app.use((request: Request, response: Response, next: () => void) => {
+    const method = request.method.toUpperCase();
+    if (method === "GET" || method === "HEAD" || method === "OPTIONS") {
+      next();
+      return;
+    }
+
+    const path = request.path;
+    if (path === "/auth/login" || path === "/auth/signup" || path === "/health") {
+      next();
+      return;
+    }
+
+    const hasAuthCookie = Boolean(request.cookies?.access_token || request.cookies?.refresh_token);
+    if (!hasAuthCookie) {
+      next();
+      return;
+    }
+
+    const csrfCookie = request.cookies?.csrf_token;
+    const csrfHeader = request.headers["x-csrf-token"];
+    const csrfHeaderValue = typeof csrfHeader === "string" ? csrfHeader : Array.isArray(csrfHeader) ? csrfHeader[0] : "";
+    if (!csrfCookie || !csrfHeaderValue || csrfCookie !== csrfHeaderValue) {
+      response.status(403).json({
+        message: "Invalid CSRF token",
+        statusCode: 403,
+      });
+      return;
+    }
+
+    next();
   });
 
   app.useGlobalPipes(

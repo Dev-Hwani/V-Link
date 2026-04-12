@@ -1,4 +1,4 @@
-import { clearSession, getSession, setSession, type SessionData } from "./session";
+﻿import { clearSession, createCookieSession, getSession, setSession, COOKIE_AUTH_SENTINEL } from "./session";
 
 export const API_BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:4000";
 
@@ -43,6 +43,28 @@ function resolveErrorMessage(status: number, rawBody: string, payload: unknown) 
   return `HTTP ${status}`;
 }
 
+function getCookieValue(name: string) {
+  if (typeof document === "undefined") {
+    return "";
+  }
+
+  const prefix = `${name}=`;
+  const pairs = document.cookie.split(";");
+  for (const pair of pairs) {
+    const trimmed = pair.trim();
+    if (trimmed.startsWith(prefix)) {
+      return decodeURIComponent(trimmed.slice(prefix.length));
+    }
+  }
+
+  return "";
+}
+
+function isUnsafeMethod(method: string) {
+  const normalized = method.toUpperCase();
+  return normalized === "POST" || normalized === "PUT" || normalized === "PATCH" || normalized === "DELETE";
+}
+
 function resolveCurrentAccessToken(fallbackToken: string) {
   if (typeof window === "undefined") {
     return fallbackToken;
@@ -52,13 +74,39 @@ function resolveCurrentAccessToken(fallbackToken: string) {
   return session?.accessToken ?? fallbackToken;
 }
 
-async function requestWithToken(path: string, accessToken: string, init?: Omit<RequestInit, "headers"> & { headers?: Record<string, string> }) {
+function buildRequestHeaders(
+  accessToken: string,
+  method: string,
+  headers?: Record<string, string>,
+): Record<string, string> {
+  const nextHeaders: Record<string, string> = {
+    ...(headers ?? {}),
+  };
+
+  if (accessToken && accessToken !== COOKIE_AUTH_SENTINEL) {
+    nextHeaders.Authorization = `Bearer ${accessToken}`;
+  }
+
+  if (typeof window !== "undefined" && isUnsafeMethod(method)) {
+    const csrfToken = getCookieValue("csrf_token");
+    if (csrfToken && !nextHeaders["x-csrf-token"]) {
+      nextHeaders["x-csrf-token"] = csrfToken;
+    }
+  }
+
+  return nextHeaders;
+}
+
+async function requestWithToken(
+  path: string,
+  accessToken: string,
+  init?: Omit<RequestInit, "headers"> & { headers?: Record<string, string> },
+) {
+  const method = init?.method ?? "GET";
   return fetch(`${API_BASE}${path}`, {
     ...init,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      ...(init?.headers ?? {}),
-    },
+    headers: buildRequestHeaders(accessToken, method, init?.headers),
+    credentials: "include",
     cache: "no-store",
   });
 }
@@ -73,19 +121,16 @@ async function refreshAccessToken() {
   }
 
   refreshPromise = (async () => {
-    const current = getSession();
-    if (!current?.refreshToken) {
-      clearSession();
-      return null;
-    }
-
     try {
+      const headers = buildRequestHeaders(COOKIE_AUTH_SENTINEL, "POST", {
+        "Content-Type": "application/json",
+      });
+
       const response = await fetch(`${API_BASE}/auth/refresh`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ refreshToken: current.refreshToken }),
+        headers,
+        body: "{}",
+        credentials: "include",
       });
 
       if (!response.ok) {
@@ -93,14 +138,14 @@ async function refreshAccessToken() {
         return null;
       }
 
-      const nextSession = (await response.json()) as SessionData;
-      if (!nextSession.accessToken || !nextSession.refreshToken) {
+      const payload = (await response.json()) as { user?: { sub: string; email: string; role: "ADMIN" | "REQUESTER" | "VENDOR"; vendorId: string | null } };
+      if (!payload.user) {
         clearSession();
         return null;
       }
 
-      setSession(nextSession);
-      return nextSession.accessToken;
+      setSession(createCookieSession({ user: payload.user }));
+      return COOKIE_AUTH_SENTINEL;
     } catch {
       clearSession();
       return null;

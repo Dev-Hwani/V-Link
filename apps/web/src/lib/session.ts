@@ -9,12 +9,23 @@ export interface SessionUser {
 
 export interface SessionData {
   accessToken: string;
-  refreshToken?: string;
   user: SessionUser;
 }
 
 const STORAGE_KEY = "vlink_session";
 export const SESSION_UPDATED_EVENT = "vlink-session-updated";
+export const COOKIE_AUTH_SENTINEL = "__cookie_auth__";
+
+export interface SessionPayload {
+  user: SessionUser;
+}
+
+export function createCookieSession(payload: SessionPayload): SessionData {
+  return {
+    accessToken: COOKIE_AUTH_SENTINEL,
+    user: payload.user,
+  };
+}
 
 export function getSession(): SessionData | null {
   if (typeof window === "undefined") {
@@ -28,8 +39,14 @@ export function getSession(): SessionData | null {
 
   try {
     const parsed = JSON.parse(raw) as SessionData;
-    if (!parsed.accessToken || !parsed.user?.role) {
+    if (!parsed.user?.role) {
       return null;
+    }
+    if (!parsed.accessToken) {
+      return {
+        accessToken: COOKIE_AUTH_SENTINEL,
+        user: parsed.user,
+      };
     }
     return parsed;
   } catch {

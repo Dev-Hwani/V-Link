@@ -1,5 +1,6 @@
-import { Body, Controller, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Post, Req, UseGuards } from "@nestjs/common";
 import { Role } from "@prisma/client";
+import { Request } from "express";
 
 import { CurrentUser } from "../common/decorators/current-user.decorator";
 import { Roles } from "../common/decorators/roles.decorator";
@@ -18,18 +19,18 @@ export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post("login")
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  login(@Req() request: Request, @Body() dto: LoginDto) {
+    return this.authService.login(dto, this.extractClientMeta(request));
   }
 
   @Post("signup")
-  signup(@Body() dto: SignupDto) {
-    return this.authService.signupRequester(dto);
+  signup(@Req() request: Request, @Body() dto: SignupDto) {
+    return this.authService.signupRequester(dto, this.extractClientMeta(request));
   }
 
   @Post("refresh")
-  refresh(@Body() dto: RefreshTokenDto) {
-    return this.authService.refresh(dto);
+  refresh(@Req() request: Request, @Body() dto: RefreshTokenDto) {
+    return this.authService.refresh(dto, this.extractClientMeta(request));
   }
 
   @Post("logout")
@@ -37,10 +38,46 @@ export class AuthController {
     return this.authService.logout(dto);
   }
 
+  @Get("sessions")
+  @UseGuards(JwtAuthGuard)
+  sessions(@CurrentUser() user: AuthUser) {
+    return this.authService.listMySessions(user);
+  }
+
+  @Post("logout-all")
+  @UseGuards(JwtAuthGuard)
+  logoutAll(@CurrentUser() user: AuthUser) {
+    return this.authService.logoutAll(user);
+  }
+
   @Post("register")
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   register(@CurrentUser() user: AuthUser, @Body() dto: RegisterDto) {
     return this.authService.register(user, dto);
+  }
+
+  private extractClientMeta(request: Request) {
+    const forwardedFor = request.headers["x-forwarded-for"];
+    const forwardedIp =
+      typeof forwardedFor === "string"
+        ? forwardedFor.split(",")[0]?.trim()
+        : Array.isArray(forwardedFor)
+          ? forwardedFor[0]?.trim()
+          : null;
+    const ipAddress = forwardedIp || request.ip || null;
+
+    const userAgentHeader = request.headers["user-agent"];
+    const userAgent =
+      typeof userAgentHeader === "string"
+        ? userAgentHeader
+        : Array.isArray(userAgentHeader)
+          ? userAgentHeader[0] ?? null
+          : null;
+
+    return {
+      ipAddress,
+      userAgent,
+    };
   }
 }

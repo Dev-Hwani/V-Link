@@ -182,9 +182,15 @@ model RefreshToken {
   id                String        @id @default(uuid())
   userId            String
   user              User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId         String
   tokenHash         String        @unique
+  userAgent         String?
+  ipAddress         String?
   expiresAt         DateTime
+  lastUsedAt        DateTime?
   revokedAt         DateTime?
+  revokedReason     String?
+  reuseDetectedAt   DateTime?
   replacedByTokenId String?       @unique
   replacedByToken   RefreshToken? @relation("RefreshTokenRotation", fields: [replacedByTokenId], references: [id])
   previousToken     RefreshToken? @relation("RefreshTokenRotation")
@@ -192,5 +198,7 @@ model RefreshToken {
   updatedAt         DateTime      @updatedAt
 
   @@index([userId])
+  @@index([userId, sessionId])
+  @@index([userId, revokedAt])
   @@index([expiresAt])
 }

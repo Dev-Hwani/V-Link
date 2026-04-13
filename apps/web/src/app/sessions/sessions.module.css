@@ -75,6 +75,11 @@
   cursor: pointer;
 }
 
+.small {
+  padding: 6px 10px;
+  font-size: 12px;
+}
+
 .button:disabled {
   cursor: not-allowed;
   opacity: 0.6;
@@ -112,6 +117,29 @@
   background: var(--teams-surface-muted);
   font-weight: 700;
   color: var(--teams-muted);
+}
+
+.currentRow {
+  background: color-mix(in srgb, var(--teams-primary) 8%, transparent);
+}
+
+.sessionIdCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.currentBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--teams-primary) 45%, var(--teams-border));
+  background: color-mix(in srgb, var(--teams-primary) 14%, transparent);
+  color: color-mix(in srgb, var(--teams-primary) 85%, var(--teams-text));
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .emptyRow {

@@ -10,6 +10,7 @@ import { RolesGuard } from "../common/guards/roles.guard";
 import { AuthUser } from "../common/interfaces/auth-user.interface";
 import { LoginDto } from "./dto/login.dto";
 import { LogoutDto } from "./dto/logout.dto";
+import { LogoutSessionDto } from "./dto/logout-session.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { SignupDto } from "./dto/signup.dto";
@@ -31,14 +32,14 @@ export class AuthController {
   async login(@Req() request: Request, @Res({ passthrough: true }) response: Response, @Body() dto: LoginDto) {
     const issued = await this.authService.login(dto, this.extractClientMeta(request));
     this.writeAuthCookies(response, issued.accessToken, issued.refreshToken);
-    return { user: issued.user };
+    return { user: issued.user, sessionId: issued.sessionId };
   }
 
   @Post("signup")
   async signup(@Req() request: Request, @Res({ passthrough: true }) response: Response, @Body() dto: SignupDto) {
     const issued = await this.authService.signupRequester(dto, this.extractClientMeta(request));
     this.writeAuthCookies(response, issued.accessToken, issued.refreshToken);
-    return { user: issued.user };
+    return { user: issued.user, sessionId: issued.sessionId };
   }
 
   @Post("refresh")
@@ -54,7 +55,7 @@ export class AuthController {
 
     const issued = await this.authService.refresh({ refreshToken }, this.extractClientMeta(request));
     this.writeAuthCookies(response, issued.accessToken, issued.refreshToken);
-    return { user: issued.user };
+    return { user: issued.user, sessionId: issued.sessionId };
   }
 
   @Post("logout")
@@ -70,8 +71,17 @@ export class AuthController {
 
   @Get("sessions")
   @UseGuards(JwtAuthGuard)
-  sessions(@CurrentUser() user: AuthUser) {
-    return this.authService.listMySessions(user);
+  async sessions(@Req() request: Request, @CurrentUser() user: AuthUser) {
+    const currentRefreshToken = this.resolveRefreshToken(request);
+    const [sessions, currentSessionId] = await Promise.all([
+      this.authService.listMySessions(user),
+      currentRefreshToken ? this.authService.findSessionIdByRefreshToken(currentRefreshToken) : Promise.resolve(null),
+    ]);
+
+    return {
+      ...sessions,
+      currentSessionId,
+    };
   }
 
   @Post("logout-all")
@@ -80,6 +90,31 @@ export class AuthController {
     const result = await this.authService.logoutAll(user);
     this.clearAuthCookies(response);
     return result;
+  }
+
+  @Post("logout-session")
+  @UseGuards(JwtAuthGuard)
+  async logoutSession(
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+    @CurrentUser() user: AuthUser,
+    @Body() dto: LogoutSessionDto,
+  ) {
+    const currentRefreshToken = this.resolveRefreshToken(request);
+    const currentSessionId = currentRefreshToken
+      ? await this.authService.findSessionIdByRefreshToken(currentRefreshToken)
+      : null;
+    const result = await this.authService.logoutSession(user, dto.sessionId);
+    const loggedOutCurrentSession = Boolean(currentSessionId && currentSessionId === dto.sessionId);
+
+    if (loggedOutCurrentSession) {
+      this.clearAuthCookies(response);
+    }
+
+    return {
+      ...result,
+      loggedOutCurrentSession,
+    };
   }
 
   @Get("me")

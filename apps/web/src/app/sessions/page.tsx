@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -19,7 +19,15 @@ interface SessionItem {
 
 interface SessionsResponse {
   count: number;
+  currentSessionId: string | null;
   items: SessionItem[];
+}
+
+interface LogoutSessionResponse {
+  success: boolean;
+  sessionId: string;
+  revokedCount: number;
+  loggedOutCurrentSession: boolean;
 }
 
 function formatDateTime(value: string) {
@@ -52,9 +60,11 @@ export default function SessionsPage() {
   const [token, setToken] = useState("");
   const [rows, setRows] = useState<SessionItem[]>([]);
   const [count, setCount] = useState(0);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
   const [loggingOutAll, setLoggingOutAll] = useState(false);
+  const [loggingOutSessionId, setLoggingOutSessionId] = useState("");
 
   useEffect(() => {
     const session = getSession();
@@ -90,6 +100,7 @@ export default function SessionsPage() {
 
       setRows(data.items);
       setCount(data.count);
+      setCurrentSessionId(data.currentSessionId);
     } catch (error) {
       if (error instanceof ApiRequestError && error.status === 401) {
         clearSession();
@@ -137,11 +148,60 @@ export default function SessionsPage() {
     }
   }
 
+  async function logoutOneSession(sessionId: string) {
+    if (!token || loggingOutSessionId) {
+      return;
+    }
+
+    const isCurrent = currentSessionId === sessionId;
+    const confirmed = window.confirm(
+      isCurrent
+        ? "현재 세션을 로그아웃하시겠습니까?"
+        : "선택한 세션을 로그아웃하시겠습니까? 해당 기기에서 자동 로그아웃됩니다.",
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    setLoggingOutSessionId(sessionId);
+    setNotice("");
+
+    try {
+      const result = await apiJson<LogoutSessionResponse>("/auth/logout-session", token, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ sessionId }),
+      });
+
+      if (result.loggedOutCurrentSession) {
+        clearSession();
+        router.replace("/login");
+        return;
+      }
+
+      setNotice("선택한 세션을 로그아웃했습니다.");
+      await loadSessions(token);
+    } catch (error) {
+      if (error instanceof ApiRequestError && error.status === 401) {
+        clearSession();
+        router.replace("/login");
+        return;
+      }
+
+      const message = error instanceof Error ? error.message : "개별 세션 로그아웃에 실패했습니다.";
+      setNotice(message);
+    } finally {
+      setLoggingOutSessionId("");
+    }
+  }
+
   return (
     <main className={styles.page}>
       <header className={styles.header}>
         <h1 className={styles.title}>내 세션</h1>
-        <p className={styles.subtitle}>현재 계정으로 로그인된 세션을 확인하고, 필요 시 전체 로그아웃을 실행할 수 있습니다.</p>
+        <p className={styles.subtitle}>로그인된 세션을 확인하고, 필요 시 세션별 또는 전체 로그아웃을 실행할 수 있습니다.</p>
       </header>
 
       {notice && <div className={styles.notice}>{notice}</div>}
@@ -159,7 +219,7 @@ export default function SessionsPage() {
             <button
               className={`${styles.button} ${styles.danger}`}
               type="button"
-              disabled={loggingOutAll || loading}
+              disabled={loggingOutAll || loading || loggingOutSessionId !== ""}
               onClick={() => void logoutAllSessions()}
             >
               {loggingOutAll ? "처리 중..." : "모든 기기 로그아웃"}
@@ -177,22 +237,41 @@ export default function SessionsPage() {
                 <th>생성 시각</th>
                 <th>마지막 사용</th>
                 <th>만료 시각</th>
+                <th>작업</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((item) => (
-                <tr key={item.id}>
-                  <td title={item.sessionId}>{compactSessionId(item.sessionId)}</td>
-                  <td>{item.userAgent ?? "-"}</td>
-                  <td>{item.ipAddress ?? "-"}</td>
-                  <td>{formatDateTime(item.createdAt)}</td>
-                  <td>{formatDateTime(item.lastUsedAt)}</td>
-                  <td>{formatDateTime(item.expiresAt)}</td>
-                </tr>
-              ))}
+              {rows.map((item) => {
+                const isCurrent = currentSessionId === item.sessionId;
+                const busy = loggingOutSessionId === item.sessionId;
+
+                return (
+                  <tr key={item.id} className={isCurrent ? styles.currentRow : ""}>
+                    <td title={item.sessionId}>
+                      <span className={styles.sessionIdCell}>{compactSessionId(item.sessionId)}</span>
+                      {isCurrent && <span className={styles.currentBadge}>현재</span>}
+                    </td>
+                    <td>{item.userAgent ?? "-"}</td>
+                    <td>{item.ipAddress ?? "-"}</td>
+                    <td>{formatDateTime(item.createdAt)}</td>
+                    <td>{formatDateTime(item.lastUsedAt)}</td>
+                    <td>{formatDateTime(item.expiresAt)}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className={`${styles.button} ${styles.small} ${styles.danger}`}
+                        disabled={loading || loggingOutAll || (loggingOutSessionId !== "" && !busy)}
+                        onClick={() => void logoutOneSession(item.sessionId)}
+                      >
+                        {busy ? "처리 중..." : "세션 로그아웃"}
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
               {rows.length === 0 && (
                 <tr>
-                  <td colSpan={6} className={styles.emptyRow}>
+                  <td colSpan={7} className={styles.emptyRow}>
                     활성 세션이 없습니다.
                   </td>
                 </tr>

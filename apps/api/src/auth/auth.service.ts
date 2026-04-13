@@ -17,6 +17,7 @@ import { assertPasswordPolicy } from "./auth-password-policy";
 const REVOKE_REASON = {
   ROTATED: "ROTATED",
   LOGOUT: "LOGOUT",
+  LOGOUT_SESSION: "LOGOUT_SESSION",
   LOGOUT_ALL: "LOGOUT_ALL",
   EXPIRED: "EXPIRED",
   REUSE_DETECTED: "REUSE_DETECTED",
@@ -238,6 +239,30 @@ export class AuthService {
     };
   }
 
+  async logoutSession(user: AuthUser, sessionId: string) {
+    const now = new Date();
+    const result = await this.prisma.refreshToken.updateMany({
+      where: {
+        userId: user.sub,
+        sessionId,
+        revokedAt: null,
+        expiresAt: {
+          gt: now,
+        },
+      },
+      data: {
+        revokedAt: now,
+        revokedReason: REVOKE_REASON.LOGOUT_SESSION,
+      },
+    });
+
+    return {
+      success: true,
+      sessionId,
+      revokedCount: result.count,
+    };
+  }
+
   async listMySessions(user: AuthUser) {
     const now = new Date();
     const rows = await this.prisma.refreshToken.findMany({
@@ -316,6 +341,18 @@ export class AuthService {
     return created;
   }
 
+  async findSessionIdByRefreshToken(refreshToken: string) {
+    const tokenHash = this.hashRefreshToken(refreshToken);
+    const row = await this.prisma.refreshToken.findUnique({
+      where: { tokenHash },
+      select: {
+        sessionId: true,
+      },
+    });
+
+    return row?.sessionId ?? null;
+  }
+
   private async issueSessionToken(payload: AuthUser, options: IssueTokenOptions = {}) {
     const sessionId = options.rotateFromToken?.sessionId ?? randomUUID();
     const refreshRecord = await this.createRefreshToken(payload.sub, sessionId, options.clientMeta);
@@ -336,6 +373,7 @@ export class AuthService {
     return {
       accessToken: await this.jwtService.signAsync(payload),
       refreshToken: refreshRecord.token,
+      sessionId,
       user: payload,
     };
   }

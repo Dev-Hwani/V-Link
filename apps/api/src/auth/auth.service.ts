@@ -12,6 +12,7 @@ import { LogoutDto } from "./dto/logout.dto";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { SignupDto } from "./dto/signup.dto";
+import { assertPasswordPolicy } from "./auth-password-policy";
 
 const REVOKE_REASON = {
   ROTATED: "ROTATED",
@@ -46,10 +47,26 @@ export class AuthService {
       throw new UnauthorizedException("Invalid credentials");
     }
 
+    const now = new Date();
+    if (user.lockedUntil && user.lockedUntil > now) {
+      throw new UnauthorizedException("Account is temporarily locked. Please try again later.");
+    }
+
     const matched = await bcrypt.compare(dto.password, user.passwordHash);
 
     if (!matched) {
+      await this.recordFailedLogin(user.id, user.failedLoginAttempts);
       throw new UnauthorizedException("Invalid credentials");
+    }
+
+    if (user.failedLoginAttempts > 0 || user.lockedUntil) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+        },
+      });
     }
 
     return this.issueSessionToken(
@@ -70,6 +87,8 @@ export class AuthService {
     if (existing) {
       throw new ConflictException("Email already exists");
     }
+
+    assertPasswordPolicy(dto.password);
 
     if (dto.role === Role.ADMIN) {
       const expectedCode = this.configService.get<string>("ADMIN_SIGNUP_CODE");
@@ -272,6 +291,8 @@ export class AuthService {
       throw new ConflictException("vendorId is required for vendor users");
     }
 
+    assertPasswordPolicy(dto.password);
+
     const passwordHash = await bcrypt.hash(dto.password, 10);
 
     const created = await this.prisma.user.create({
@@ -376,6 +397,50 @@ export class AuthService {
       return 14;
     }
     return Math.floor(parsed);
+  }
+
+  private resolveLoginMaxFailedAttempts() {
+    const raw = this.configService.get<string>("AUTH_LOGIN_MAX_FAILED_ATTEMPTS") ?? "5";
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      return 5;
+    }
+    return Math.floor(parsed);
+  }
+
+  private resolveLoginLockMinutes() {
+    const raw = this.configService.get<string>("AUTH_LOGIN_LOCK_MINUTES") ?? "15";
+    const parsed = Number(raw);
+    if (!Number.isFinite(parsed) || parsed < 1) {
+      return 15;
+    }
+    return Math.floor(parsed);
+  }
+
+  private async recordFailedLogin(userId: string, currentAttempts: number) {
+    const nextAttempts = currentAttempts + 1;
+    const maxAttempts = this.resolveLoginMaxFailedAttempts();
+    const lockMinutes = this.resolveLoginLockMinutes();
+
+    if (nextAttempts >= maxAttempts) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: {
+          failedLoginAttempts: 0,
+          lockedUntil: new Date(Date.now() + lockMinutes * 60 * 1000),
+        },
+      });
+      return;
+    }
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        failedLoginAttempts: {
+          increment: 1,
+        },
+      },
+    });
   }
 
   private async createRefreshToken(userId: string, sessionId: string, clientMeta?: AuthClientMeta) {

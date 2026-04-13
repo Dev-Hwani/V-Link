@@ -36,6 +36,8 @@ model User {
   id                String          @id @default(uuid())
   email             String          @unique
   passwordHash      String
+  failedLoginAttempts Int           @default(0)
+  lockedUntil       DateTime?
   name              String
   role              Role
   vendorId          String?
@@ -49,6 +51,8 @@ model User {
   refreshTokens     RefreshToken[]
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
+
+  @@index([lockedUntil])
 }
 
 model Vendor {

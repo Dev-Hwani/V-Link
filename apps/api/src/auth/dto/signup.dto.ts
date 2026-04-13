@@ -1,5 +1,7 @@
 import { Role } from "@prisma/client";
-import { IsEmail, IsEnum, IsOptional, IsString, MinLength } from "class-validator";
+import { IsEmail, IsEnum, IsOptional, IsString, Matches, MinLength } from "class-validator";
+
+import { PASSWORD_POLICY_MESSAGE } from "../auth-password-policy";
 
 export class SignupDto {
   @IsEmail()
@@ -7,6 +9,9 @@ export class SignupDto {
 
   @IsString()
   @MinLength(8)
+  @Matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9]).{8,}$/, {
+    message: PASSWORD_POLICY_MESSAGE,
+  })
   password!: string;
 
   @IsString()

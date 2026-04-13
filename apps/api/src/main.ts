@@ -1,12 +1,14 @@
-import { ValidationPipe } from "@nestjs/common";
+import { HttpException, ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import * as cookieParser from "cookie-parser";
 import { Request, Response } from "express";
 
 import { AppModule } from "./app.module";
+import { AuthRateLimitService } from "./auth/auth-rate-limit.service";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const authRateLimitService = app.get(AuthRateLimitService);
 
   const corsOriginsRaw = process.env.WEB_APP_ORIGIN ?? "http://localhost:3000";
   const corsOrigins = corsOriginsRaw
@@ -20,6 +22,35 @@ async function bootstrap() {
   });
 
   app.use(cookieParser());
+  app.use((request: Request, response: Response, next: () => void) => {
+    const method = request.method.toUpperCase();
+    if (method !== "POST") {
+      next();
+      return;
+    }
+
+    try {
+      if (request.path === "/auth/login") {
+        authRateLimitService.consumeLogin(request);
+      } else if (request.path === "/auth/signup") {
+        authRateLimitService.consumeSignup(request);
+      }
+    } catch (error) {
+      if (error instanceof HttpException) {
+        response.status(error.getStatus()).json(error.getResponse());
+        return;
+      }
+
+      response.status(500).json({
+        message: "Internal server error",
+        statusCode: 500,
+      });
+      return;
+    }
+
+    next();
+  });
+
   app.use((request: Request, response: Response, next: () => void) => {
     const method = request.method.toUpperCase();
     if (method === "GET" || method === "HEAD" || method === "OPTIONS") {

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -86,6 +86,7 @@ export function AppNav() {
   const [session, setSession] = useState<SessionData | null>(null);
   const [theme, setTheme] = useState<ThemeMode>("light");
   const [pendingCount, setPendingCount] = useState(0);
+  const showSessionShortcut = process.env.NEXT_PUBLIC_SHOW_SESSION_SHORTCUT !== "false";
 
   useEffect(() => {
     const syncSession = () => setSession(getSession());
@@ -97,6 +98,7 @@ export function AppNav() {
       }
       void fetchPendingCount(current.accessToken).then((count) => setPendingCount(count));
     };
+
     const onStorage = (event: StorageEvent) => {
       syncSession();
       if (event.key === PENDING_COUNT_UPDATED_STORAGE_KEY) {
@@ -112,6 +114,7 @@ export function AppNav() {
     window.addEventListener("storage", onStorage);
     window.addEventListener(PENDING_COUNT_UPDATED_EVENT, syncPending);
     window.addEventListener(SESSION_UPDATED_EVENT, syncSession);
+
     return () => {
       window.removeEventListener("storage", onStorage);
       window.removeEventListener(PENDING_COUNT_UPDATED_EVENT, syncPending);
@@ -240,6 +243,11 @@ export function AppNav() {
           <div className="app-user-card">
             <span className="app-nav-meta-role">{roleLabel(session.user.role)}</span>
             <span className="app-nav-meta-email">{session.user.email}</span>
+            {showSessionShortcut && (
+              <Link className={`app-user-card-link ${isActive("/sessions") ? "app-user-card-link-active" : ""}`} href="/sessions">
+                세션 관리
+              </Link>
+            )}
           </div>
           <div className="app-nav-group">
             {roleMenus.map((menu) => (

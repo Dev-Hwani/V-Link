@@ -215,6 +215,25 @@ a {
   text-overflow: ellipsis;
 }
 
+.app-user-card-link {
+  margin-top: 4px;
+  width: fit-content;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--teams-primary-strong);
+  border-radius: 6px;
+  padding: 4px 6px;
+}
+
+.app-user-card-link:hover {
+  background: color-mix(in srgb, var(--teams-primary) 12%, transparent);
+}
+
+.app-user-card-link-active {
+  background: color-mix(in srgb, var(--teams-primary) 20%, transparent);
+}
+
 .app-nav-spacer {
   flex: 1 1 auto;
   min-height: 10px;
